@@ -18,6 +18,7 @@ void write_super_block(){
 	sp_blk->magic_number = 10012;
 	sp_blk->block_count = SBFS_NUMBER_OF_BLOCKS;
 	sp_blk->block_size = SBFS_BLOCK_SIZE;
+	
 	printf("size of sbfs_super_block: %d\n", sizeof(sp_blk));
 	write_block(sp_blk, 1, 1);
 	struct sbfs_super_block *buf = malloc(sizeof(SBFS_BLOCK_SIZE));
