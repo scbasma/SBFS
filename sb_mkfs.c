@@ -1,35 +1,29 @@
 #include "sbfs.h"
 #include "disk_op.h"
+#include "spblk.h"
+#include "inode.h"
+//#include "bitmap.h"
 #include <stdlib.h> 
 #include <stdio.h>
 
 
-char *disk;
-
-void load_disk(){
-	printf("adress of disk: %d\n", disk);
-	disk = (char*) malloc(SBFS_DISK_SIZE);
-	printf("adress of disk: %d\n", disk);
+void write_super_block(){
+	struct sbfs_sp_blk *sp_blk = init_sp_blk();
+	if(sp_blk == NULL){
+		printf("SPBLK IS NULL");
+	}
+	printf("size of sbfs_super_block: %d\n", sizeof(sp_blk));
+	init_sp_blk(sp_blk);
+	write_block(sp_blk, 1);
+	free(sp_blk);
 }
 
-void write_super_block(){
-	struct sbfs_super_block *sp_blk = malloc(sizeof(struct sbfs_super_block));
-	sp_blk->version = 1;
-	sp_blk->magic_number = 10012;
-	sp_blk->block_count = SBFS_NUMBER_OF_BLOCKS;
-	sp_blk->block_size = SBFS_BLOCK_SIZE;
-	
-	printf("size of sbfs_super_block: %d\n", sizeof(sp_blk));
-	write_block(sp_blk, 1, 1);
-	struct sbfs_super_block *buf = malloc(sizeof(SBFS_BLOCK_SIZE));
-	read_block(buf, 1, 1);
-	printf("Number of blocks: %d\n",buf->block_count);
-
-
+void write_bitmaps(){
 }
 
 void write_inodes(){
-
+	write_root_inode();
+	init_inode_list();
 }
 
 

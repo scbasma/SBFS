@@ -1,0 +1,11 @@
+Hva skjer når man lager en fil? naiv måte
+
+mknod:
+	
+	gi inode til filen, oppdater dir entry, skriv filen til disk. 
+
+	gi inode til filen:
+		alloker en ny inode til filen, initialiser den og sett pos til brukt i inode_bitmap
+	oppdater dir_entry: 
+		oppdater nærmeste dir_entry med det nye filnavnet og tilhørende inode_number
+		 
