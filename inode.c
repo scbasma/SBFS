@@ -2,43 +2,46 @@
 #include <stdio.h> 
 #include "inode.h"
 #include "sbfs.h"
-//#include "spblk.h"
+#include "dbg.h"
+#include "spblk.h"
 
 //TODO: make so that several inodes in one block; number of inodes = SIZE_OF_BLOCK/SIZE_OF_INODE
 
+// struct sbfs_inode {
+// 	uint16_t mode;
+// 	uint16_t user_id;
+// 	uint32_t a_time;
+// 	uint32_t m_time;
+// 	uint32_t c_time;
+// 	uint16_t grp_id;
+// 	uint16_t link_count;
+// 	uint32_t res_blocks_nmbr;
+// 	uint32_t flags;
+// 	uint32_t *dt_blocks; //15 blocks, 12 direct, 13th indirect, 14th double indirect, 15th triple indirect
 
-//only called at mkfs
-int init_inode_list(){
-	int i;
-	for(i = 0; i < SBFS_NUMBER_OF_INODES; i++){
-		struct sbfs_inode *new_inode = malloc(SBFS_BLOCK_SIZE);
-		if(new_inode == NULL){
-			printf("INODE IS NULL");
-		}
-		printf("initializes inode pointer");
-		new_inode->mode = 'r';
-		new_inode->size = 0;
-		new_inode->block_address = 0;
-		printf("initialized inode values");
-		int ret = write_block(new_inode, ROOT_INODE_NUMBER + i);
-		free(new_inode);
-	}
-	return 0;
-}
+
+// 	int *block_pointers;
+// };
+
+
 
 int write_root_inode(){
-	struct sbfs_inode root_inode = malloc(SBFS_BLOCK_SIZE);
-	root_inode->='r';
+	struct sbfs_inode *root_inode = malloc(SBFS_BLOCK_SIZE);
+	check_mem(root_inode);
+	root_inode->mode=600;
 	root_inode->size = 0;
-	new_inode->block_address = FIRST_DATA_BLOCK;
-	
+	root_inode->type=2;
+	root_inode->block_address = sp_blk;
 	return 0;
+
+error:
+	return -1;
 }
 
 
-// sbfs_inode get_inode(int inode_number){
-	
-// }
+sbfs_inode allocate_inode(int inode_number){
+		
+}
 
 
 // sbfs_inode get_next_free_inode(){

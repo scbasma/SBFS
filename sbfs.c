@@ -15,5 +15,5 @@ int sbfs_read(char *pathname, char *buf){
 };
 
 int sbfs_write(char *pathname, const char *buf){
-
+	
 };

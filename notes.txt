@@ -8,4 +8,19 @@ mknod:
 		alloker en ny inode til filen, initialiser den og sett pos til brukt i inode_bitmap
 	oppdater dir_entry: 
 		oppdater nærmeste dir_entry med det nye filnavnet og tilhørende inode_number
+32768
+
+		Plan:
+
+		1. MKFS
+
+			Skriv superblokk. 
+				-Superblokk ser bra ut?
+			- Skriv bitmaps
+			 - 2xInode, hvor mange datablokker? 4096*8 = 32768 blokker, 32768*4=131072 blokker, eller 4 blokker til bitmaps for datablokker 
+			- Skriv inode liste
+			- Skriv root dir
+				- Dette gjøres gjennom mknod? eller ikke? prøv bare uten først. 
+
+
 		 

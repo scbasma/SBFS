@@ -1,11 +1,21 @@
 #include "sbfs.h"
+#include "disk_op.h"
+#include "spblk.h"
+#include "inode.h"
+#include "dbg.h"
 #include <stdlib.h> 
 #include <stdio.h>
 #include <string.h>
 
 char *disk;
-void load_disk(){
+int load_disk(){
 	disk = malloc(SBFS_DISK_SIZE);
+	memset(disk, 0, SBFS_DISK_SIZE);
+	check_mem(disk);
+	return 0;
+	
+error:
+	return -1;
 }
 
 
@@ -19,12 +29,10 @@ void read_block(void *buf, int block_number){
 
 //implement adress testing, dividing buf into block sizes etc 
 int write_block(void *buf, int block_number){
-	printf("address of disk, %d\n", disk);
-	printf("block_number: %d\n", block_number);
-	printf("write address: %d\n", disk + block_number*SBFS_BLOCK_SIZE);
-	printf("write to block address in relation to disk: %d\n", block_number*SBFS_BLOCK_SIZE);
-	printf("write address: %d\n", disk + block_number*SBFS_BLOCK_SIZE);
-	printf("size of buffer to write to disk: %d\n", sizeof(buf));
+	check_mem(buf);
 	memcpy(disk + block_number*SBFS_BLOCK_SIZE, buf, SBFS_BLOCK_SIZE);
-	return 1;
+	return 0;
+
+error:
+	return -1;
 }
