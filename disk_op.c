@@ -1,13 +1,11 @@
 #include "sbfs.h"
 #include "disk_op.h"
-#include "spblk.h"
-#include "inode.h"
 #include "dbg.h"
 #include <stdlib.h> 
 #include <stdio.h>
 #include <string.h>
 
-char *disk;
+void *disk;
 int load_disk(){
 	disk = malloc(SBFS_DISK_SIZE);
 	memset(disk, 0, SBFS_DISK_SIZE);

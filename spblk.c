@@ -3,6 +3,7 @@
 #include "spblk.h" 
 #include "sbfs.h"
 #include "dbg.h"
+#include "bitmap.h"
 
 	// uint16_t version;
 	// uint32_t magic_number;
@@ -18,46 +19,27 @@
 	// uint16_t fs_state
 
 
-
-
-struct sbfs_sp_blk *init_sp_blk(){
-	
-	struct sbfs_sp_blk *sp_blk = malloc(SBFS_BLOCK_SIZE);
-	check_mem(sp_blk);
-	sp_blk->magic_number = 10012;
-	sp_blk->block_count = SBFS_NUMBER_OF_BLOCKS;
-	sp_blk->block_size = SBFS_BLOCK_SIZE;
-	sp_blk->first_free_inode = ROOT_INODE_NUMBER;
-	sp_blk->number_of_inodes = 2*1024*32;
-	sp_blk->next_free_data_block = 2;
-	sp_blk->next_free_inode = ROOT_INODE_NUMBER+1;
-	sp_blk->m_time = 0;
-	sp_blk->w_time = 0;
-	return sp_blk;
-
-error:
-	return NULL;
+int get_free_inode(){
+	int free_inode = spblk->next_free_inode;
+	spblk->next_free_inode += 1:
+	int block_nmbr = free_inode / NUMBER_OF_INODE_BITMAP_BLOCKS;
+	int *bitmap_block = malloc(SBFS_BLOCK_SIZE);
+	read_block(bitmap_block, FIRST_BITMAP_BLOCK_POS+block_nmbr);
+	int bitPos = free_inode - (4096*8*block_nmbr);
+	setBit(bitmap_block, bitPos);
+	return free_inode;
 }
 
-// int get_next_free_data_block(struct sbfs_sp_blk *sp_blk){
-// 	int next = (*sp_blk)->next_free_data_block;
-// 	//extremely naive, unefficient way to handle next block
-// 	//implement bitmap on todo list
-// 	(*sp_blk)->next_free_data_block = next + 1;
-// 	if(next)
-// 		return next;
-// 	return -1;
-// };
-
-// int get_next_free_inode(struct sbfs_sp_blk *sp_blk){
-//  int next = (*sp_blk)->next_free_inode;
-//  //extremely naive, unefficient way to handle next inode
-// 	//implement bitmap on todo list
-//  (*sp_blk)->next_free_inode = next + 1;
-//  if(next)
-//  	return next;
-//  return -1;
-// };
+int get_free_dblock(){
+	int free_block = spblk->next_free_data_block;
+	spblk->next_free_data_block += 1;
+	int block_nmbr = free_block /NUMBER_OF_DATA_BITMAP_BLOCKS;
+	int *bitmap_block = malloc(SBFS_BLOCK_SIZE);
+	int bitPos = free_block - (4096*8*block_nmbr);
+	read_block(bitmap_block, FIRST_BITMAP_BLOCK_POS+NUMBER_OF_INODE_BITMAP_BLOCKS+block_nmbr);
+	setBit(bitmap_block, bitPos);
+	return free_block;
+}
 
 size_t get_spblk_size(){
 	return sizeof(struct sbfs_sp_blk);

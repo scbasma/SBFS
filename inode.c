@@ -3,7 +3,12 @@
 #include "inode.h"
 #include "sbfs.h"
 #include "dbg.h"
+//#include "spblk.h"
+#include "bitmap.h"
+#include "disk_op.h"
 #include "spblk.h"
+
+
 
 //TODO: make so that several inodes in one block; number of inodes = SIZE_OF_BLOCK/SIZE_OF_INODE
 
@@ -27,11 +32,6 @@
 
 int write_root_inode(){
 	struct sbfs_inode *root_inode = malloc(SBFS_BLOCK_SIZE);
-	check_mem(root_inode);
-	root_inode->mode=600;
-	root_inode->size = 0;
-	root_inode->type=2;
-	root_inode->block_address = sp_blk;
 	return 0;
 
 error:
@@ -39,20 +39,32 @@ error:
 }
 
 
-sbfs_inode allocate_inode(int inode_number){
-		
+struct sbfs_inode *get_inode(int i_nmbr){
+	log_info("Inode size: %d", sizeof(struct sbfs_inode));
+	int blk_nmbr = (FIRST_INODE_BLOCK_NMBR) + (i_nmbr / 85);
+	int inode_in_block_nmbr = i_nmbr % 85;
+	log_info("Block number of inode: %d", blk_nmbr);
+	log_info("Inode number in block: %d", inode_in_block_nmbr);
+	struct sbfs_inode *inode_block = malloc(SBFS_BLOCK_SIZE);
+	read_block(inode_block, blk_nmbr);
+	int i;
+	struct sbfs_inode *inode = malloc(sizeof(struct sbfs_inode));
+	memcpy(inode, inode_block + inode_in_block_nmbr, sizeof(struct sbfs_inode));
+	log_info("inode grp_id: %d ", inode->grp_id);
+	return inode;
+}
+
+struct sbfs_inode allocate_free_inode(){
+		return get_inode(get_free_inode()); //method in spblk
+
 }
 
 
-// sbfs_inode get_next_free_inode(){
+int set_free_inode(int inode_number){
 
-// };
-
-// int free_inode(int inode_number){
-
-// };
+};
 
 
-// sbfs_inode namei(char *path_name){
-// 	//traverse dir entries
-// };
+struct sbfs_inode namei(char *path_name){
+ 	//traverse dir entries
+};

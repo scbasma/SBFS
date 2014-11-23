@@ -1,6 +1,9 @@
+#ifndef _spblk_H
+#define _splk_H
 #include <stdlib.h>
+#include <stdint.h>
 
-struct sbfs_sp_blk{
+typedef struct {
 	uint16_t version;
 	uint32_t magic_number;
 	uint32_t block_count;
@@ -13,11 +16,14 @@ struct sbfs_sp_blk{
 	uint32_t m_time; //last mounted
 	uint32_t w_time; //last write
 	uint16_t fs_state;
-};
+} sbfs_sp_blk;
 
-struct sbfs_sp_blk *init_sp_blk();
-int get_next_free_data_block(struct sbfs_sp_blk *sp_blk);
-int get_next_free_inode(struct sbfs_sp_blk *sp_blk);
-size_t get_spblk_size();
+
+int get_free_inode();
+int get_free_dblock();
+
+#endif
+
+
 
 

@@ -46,6 +46,10 @@ int clearBit(int *bitmap, int pos){
 	return 0;
 }
 
+int check_free(int pos){
+
+}
+
 
 // int main(int argc, int *argv[]){
 // 	int *memory_block = (int*) calloc(1024, sizeof(int));

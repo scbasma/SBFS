@@ -1,4 +1,6 @@
-
+#ifndef _INODE_H
+#define _INODE_H
+#include <stdint.h>
 
 struct sbfs_inode {
 	uint16_t mode;
@@ -18,5 +20,9 @@ struct sbfs_inode {
 };
 
 void init_inode(struct sbfs_inode *inode, char mode, int size, int blk_address);
-int namei(char *path);
-int init_inode_list();
+struct sbfs_inode *get_inode();
+struct sbfs_inode allocate_free_inode();
+struct sbfs_inode namei(char *path);
+int set_free_inode(int inode_number);
+
+#endif
