@@ -20,8 +20,8 @@
 
 
 int get_free_inode(){
-	int free_inode = spblk->next_free_inode;
-	spblk->next_free_inode += 1:
+	int free_inode = sp_blk->next_free_inode;
+	sp_blk->next_free_inode += 1;
 	int block_nmbr = free_inode / NUMBER_OF_INODE_BITMAP_BLOCKS;
 	int *bitmap_block = malloc(SBFS_BLOCK_SIZE);
 	read_block(bitmap_block, FIRST_BITMAP_BLOCK_POS+block_nmbr);
@@ -31,16 +31,12 @@ int get_free_inode(){
 }
 
 int get_free_dblock(){
-	int free_block = spblk->next_free_data_block;
-	spblk->next_free_data_block += 1;
+	int free_block = sp_blk->next_free_data_block;
+	sp_blk->next_free_data_block += 1;
 	int block_nmbr = free_block /NUMBER_OF_DATA_BITMAP_BLOCKS;
 	int *bitmap_block = malloc(SBFS_BLOCK_SIZE);
 	int bitPos = free_block - (4096*8*block_nmbr);
 	read_block(bitmap_block, FIRST_BITMAP_BLOCK_POS+NUMBER_OF_INODE_BITMAP_BLOCKS+block_nmbr);
 	setBit(bitmap_block, bitPos);
 	return free_block;
-}
-
-size_t get_spblk_size(){
-	return sizeof(struct sbfs_sp_blk);
 }

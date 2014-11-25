@@ -47,7 +47,7 @@ int clearBit(int *bitmap, int pos){
 }
 
 int check_free(int pos){
-
+	
 }
 
 

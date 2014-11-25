@@ -1,12 +1,15 @@
 #include "sbfs.h"
 #include "disk_op.h"
-
+#include "spblk.h"
 #include "inode.h"
 #include "dbg.h"
 //#include "bitmap.h"
 #include <stdlib.h> 
 #include <stdio.h>
-#include "stdint.h"
+#include <stdint.h>
+#include <unistd.h>
+#include "time.h"
+
 
 
 /**
@@ -35,6 +38,7 @@ void write_super_block(){
 	memcpy(blk_sp_blk, sp_blk, sizeof(sbfs_sp_blk));
 	write_block(blk_sp_blk, 0);
 	free(blk_sp_blk);
+	check_mem(sp_blk);
 error:
 	;
 
@@ -42,17 +46,17 @@ error:
 
 int init_inode_list(){
 	int j = 0;
-	int inode_size = sizeof(struct sbfs_inode);
+	int inode_size = sizeof(sbfs_disk_inode);
 	int blk_nmbr = 0;
 	log_info("First block number: %d", FIRST_INODE_BLOCK_NMBR);
 	while(j < SBFS_NUMBER_OF_INODES){
 		
 		int i;
-		struct sbfs_inode *inodeBlock = malloc(SBFS_BLOCK_SIZE);
-		struct sbfs_inode *inode_block_trav = inodeBlock;
+		sbfs_disk_inode *inodeBlock = malloc(SBFS_BLOCK_SIZE);
+		sbfs_disk_inode *inode_block_trav = inodeBlock;
 		check_mem(inodeBlock);
 		for(i = 0; i < INODE_NMBR_PER_BLOCK ; i++, j++){
-			struct sbfs_inode *new_inode = malloc(inode_size);
+			sbfs_disk_inode *new_inode = malloc(inode_size);
 			new_inode->mode = 770;
 			new_inode->size = 0;
 			new_inode->a_time = 0;
@@ -63,6 +67,8 @@ int init_inode_list(){
 			new_inode->link_count = 0;
 			new_inode->res_blocks_nmbr = 0;
 			new_inode->flags = 0;
+			uint32_t init_data_block_list[15] = {0}; 
+			memcpy(new_inode->dt_blocks, init_data_block_list, sizeof(new_inode->dt_blocks));
 			memcpy(inode_block_trav, new_inode, inode_size);
 			inode_block_trav++;
 			free(new_inode);
@@ -75,7 +81,7 @@ int init_inode_list(){
 	}
 	log_info("Last block number: %d", FIRST_INODE_BLOCK_NMBR+blk_nmbr);
 	log_info("Total size of all inodes: %d", SBFS_NUMBER_OF_INODES*inode_size);
-	log_info("Inodes per block: %d", SBFS_BLOCK_SIZE/sizeof(struct sbfs_inode));
+	log_info("Inodes per block: %d", SBFS_BLOCK_SIZE/sizeof(sbfs_disk_inode));
 	log_info("Number of blocks used: %d", blk_nmbr);
 	return 0;
 
@@ -98,9 +104,55 @@ void write_bitmaps(){
 	}
 }
 
+// struct sbfs_inode {
+// 	uint32_t number;
+// 	uint16_t mode;
+// 	uint16_t user_id;
+// 	uint32_t size;
+// 	uint32_t a_time;
+// 	uint32_t m_time;
+// 	uint32_t c_time;
+// 	uint16_t grp_id;
+// 	uint16_t link_count;
+// 	uint32_t res_blocks_nmbr;
+// 	uint32_t flags;
+// 	uint32_t *dt_blocks; //15 blocks, 12 direct, 13th indirect, 14th double indirect, 15th triple indirect
+
+// };
+
+
+
 
 void make_root(){
-	struct sbfs_inode root_inode = get_inode(ROOT_INODE_NUMBER);
+	sbfs_core_inode *root_inode = iget(ROOT_INODE_NUMBER);
+	root_inode->d_inode.mode = 0770;
+	root_inode->d_inode.user_id=getuid();
+	root_inode->d_inode.grp_id=getgid();
+	root_inode->d_inode.a_time = time(NULL);
+	root_inode->d_inode.m_time = time(NULL);
+	root_inode->d_inode.link_count +=1;
+	root_inode->d_inode.res_blocks_nmbr = 1;
+	root_inode->d_inode.flags = 0;
+	root_inode->d_inode.dt_blocks[0] = get_free_dblock();
+
+
+
+	// struct dir_entry *dot_entry = malloc(2*sizeof(struct dir_entry));
+	// dot_entry->name = ".";
+	// dot_entry->inode_number = 2;
+	// dot_entry->offset = sizeof(struct dir_entry);
+	// dot_entry->file_t = 2;
+	// *dot_entry++;
+	// dot_entry->name = "..";
+	// dot_entry->inode_number = 2;
+	// dot_entry->offset = sizeof(struct dir_entry);
+	// dot_entry->file_t = 2;
+	// void *blockSize = 
+	// write_block()
+
+	//data blocks? same which one you choose? suggestion: just get next from superblock
+
+	
 
 }
 

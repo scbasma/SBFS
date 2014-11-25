@@ -1,5 +1,5 @@
 #ifndef _spblk_H
-#define _splk_H
+#define _spblk_H
 #include <stdlib.h>
 #include <stdint.h>
 

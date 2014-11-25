@@ -3,7 +3,6 @@
 #include "inode.h"
 #include "sbfs.h"
 #include "dbg.h"
-//#include "spblk.h"
 #include "bitmap.h"
 #include "disk_op.h"
 #include "spblk.h"
@@ -39,32 +38,67 @@ error:
 }
 
 
-struct sbfs_inode *get_inode(int i_nmbr){
-	log_info("Inode size: %d", sizeof(struct sbfs_inode));
-	int blk_nmbr = (FIRST_INODE_BLOCK_NMBR) + (i_nmbr / 85);
-	int inode_in_block_nmbr = i_nmbr % 85;
+sbfs_core_inode *iget(uint32_t i_nmbr){
+	log_info("Inode core size: %d", sizeof(sbfs_core_inode));
+	int blk_nmbr = (FIRST_INODE_BLOCK_NMBR) + (i_nmbr / INODE_NMBR_PER_BLOCK);
+	int inode_in_block_nmbr = i_nmbr % INODE_NMBR_PER_BLOCK;
+	
 	log_info("Block number of inode: %d", blk_nmbr);
 	log_info("Inode number in block: %d", inode_in_block_nmbr);
-	struct sbfs_inode *inode_block = malloc(SBFS_BLOCK_SIZE);
+	
+	sbfs_disk_inode *inode_block = malloc(SBFS_BLOCK_SIZE);
 	read_block(inode_block, blk_nmbr);
-	int i;
-	struct sbfs_inode *inode = malloc(sizeof(struct sbfs_inode));
-	memcpy(inode, inode_block + inode_in_block_nmbr, sizeof(struct sbfs_inode));
-	log_info("inode grp_id: %d ", inode->grp_id);
-	return inode;
+	
+	sbfs_disk_inode *d_inode = malloc(sizeof(sbfs_disk_inode));
+	memcpy(d_inode, inode_block + inode_in_block_nmbr, sizeof(sbfs_disk_inode));
+
+	sbfs_core_inode *c_inode = malloc(sizeof(sbfs_core_inode));
+	memcpy(&(c_inode->d_inode), d_inode, sizeof(sbfs_disk_inode) );
+
+	c_inode->i_nmbr = i_nmbr;
+	c_inode->status = 0;
+	c_inode->ref_count = 1;
+	
+	return c_inode;
 }
 
-struct sbfs_inode allocate_free_inode(){
-		return get_inode(get_free_inode()); //method in spblk
+void iput(sbfs_core_inode *c_inode){
+	//lock here
+	c_inode->ref_count--;
+	if(c_inode->ref_count == 0){
 
+		if(c_inode->d_inode.link_count == 0){
+			//free inode, blocks 
+		}
+		if(c_inode->status){ //if changed write to disk, do it anyways right now
+
+		}
+
+		//write inode to disk
+	}
+
+	//release lock;
 }
 
+int bmap(sbfs_core_inode *c_inode, off_t offset,off_t *file_offset){
+	int blk_nmbr;
+	int block_pos_in_file = offset/SBFS_BLOCK_SIZE;
+	int pos_in_block = offset%SBFS_BLOCK_SIZE;
+
+	*file_offset = pos_in_block;
+
+	if(block_pos_in_file > 12 ){ //12:number of direct blocks
+		blk_nmbr = c_inode->d_inode.dt_blocks[block_pos_in_file];
+	}
+	//add functionality for level of indirection = 3
+	return blk_nmbr;
+}
 
 int set_free_inode(int inode_number){
 
 };
 
 
-struct sbfs_inode namei(char *path_name){
+sbfs_core_inode namei(char *path_name){
  	//traverse dir entries
 };
