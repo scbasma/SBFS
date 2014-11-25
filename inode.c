@@ -51,13 +51,13 @@ sbfs_core_inode *iget(uint32_t i_nmbr){
 	
 	sbfs_disk_inode *d_inode = malloc(sizeof(sbfs_disk_inode));
 	memcpy(d_inode, inode_block + inode_in_block_nmbr, sizeof(sbfs_disk_inode));
-
+	free(inode_block);
 	sbfs_core_inode *c_inode = malloc(sizeof(sbfs_core_inode));
 	memcpy(&(c_inode->d_inode), d_inode, sizeof(sbfs_disk_inode) );
-
+	free(d_inode);
 	c_inode->i_nmbr = i_nmbr;
 	c_inode->status = 0;
-	c_inode->ref_count = 1;
+	c_inode->ref_count++;
 	
 	return c_inode;
 }
@@ -71,23 +71,28 @@ void iput(sbfs_core_inode *c_inode){
 			//free inode, blocks 
 		}
 		if(c_inode->status){ //if changed write to disk, do it anyways right now
-
+			char *buf = malloc(sizeof(sbfs_core_inode));
+			memcpy(buf, c_inode, sizeof(sbfs_core_inode));
+			sys_write((uint64_t) c_inode, buf, sizeof(sbfs_core_inode),0);
 		}
 
-		//write inode to disk
+		
 	}
 
 	//release lock;
 }
 
-int bmap(sbfs_core_inode *c_inode, off_t offset,off_t *file_offset){
-	int blk_nmbr;
+int bmap(sbfs_core_inode *c_inode, off_t offset,uint8_t *file_offset){
+	log_info("Inside bmap");
+	int blk_nmbr = 0;
 	int block_pos_in_file = offset/SBFS_BLOCK_SIZE;
 	int pos_in_block = offset%SBFS_BLOCK_SIZE;
+	if(file_offset){
+		*file_offset = pos_in_block;
+	}
+	log_info("file offset: %d", *file_offset );
 
-	*file_offset = pos_in_block;
-
-	if(block_pos_in_file > 12 ){ //12:number of direct blocks
+	if(block_pos_in_file < 12 ){ //12:number of direct blocks
 		blk_nmbr = c_inode->d_inode.dt_blocks[block_pos_in_file];
 	}
 	//add functionality for level of indirection = 3
@@ -100,5 +105,15 @@ int set_free_inode(int inode_number){
 
 
 sbfs_core_inode namei(char *path_name){
- 	//traverse dir entries
+ 	sbfs_core_inode *working_inode = iget(2); //start with root
+
+ 	char *dir_name;
+ 	dir_name = strtok(path_name, "/");
+
+ 	int blockNumber = 0;
+ 	while(dir_name != NULL){
+ 		struct dir_entry *entry_ptr = malloc(SBFS_BLOCK_SIZE); 
+ 		sys_read((uint64_t) working_inode, entry_ptr, SBFS_BLOCK_SIZE, SBFS_BLOCK_SIZE*blockNumber);
+
+ 	}
 };

@@ -35,6 +35,7 @@ void init_inode(sbfs_disk_inode *inode, char mode, int size, int blk_address);
 
 sbfs_core_inode *iget(uint32_t i_nmbr);
 
+int bmap(sbfs_core_inode *c_inode, off_t offset,uint8_t *file_offset);
 
 void iput(sbfs_core_inode *c_inode);
 

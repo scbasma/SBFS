@@ -1,3 +1,5 @@
+#ifndef _SBFS_SYS_H
+#define _SBFS_SYS_H
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -9,7 +11,7 @@ int sys_mknod(const char *path, mode_t mode, dev_t dev); //what's up with the de
 
 int sys_opendir(const char *path);
 
-struct *dir_entry sys_readdir(struct *dir_entries); //returns the next dir_entry in the dir_entry stream dir_entries
+//struct dir_entry *sys_readdir(struct *dir_entries); //returns the next dir_entry in the dir_entry stream dir_entries
 
 int sys_unlink(const char *path); //remove file if no links
 
@@ -26,3 +28,4 @@ size_t sys_write(uint64_t fd, const void *buf, size_t count, off_t offset); //wr
 
 //have to read the specified block in order to add stuff at specified place
 
+#endif
