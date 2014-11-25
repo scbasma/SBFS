@@ -137,6 +137,8 @@ void make_root(){
 	root_inode->d_inode.flags = 0;
 	root_inode->d_inode.dt_blocks[0] = get_free_dblock();
 
+
+	log_info("BLOCK GIVEN TO ROOT: %d", root_inode->d_inode.dt_blocks[0]);
 	struct dir_entry root_entries[2];
 
 	log_info("Size of dir entry: %d", sizeof(struct dir_entry));
@@ -157,10 +159,18 @@ void make_root(){
 	sys_write((uint64_t) root_inode, root_entries, sizeof(root_entries), 0);
 	free(dot_dot_entry);
 	free(dot_entry);
+	
+	struct dir_entry *test = malloc(sizeof(struct dir_entry));
+	sys_read((uint64_t) root_inode, test, sizeof(struct dir_entry), sizeof(struct dir_entry));
+	log_info("test of dir entry: %s", test->name);
+	free(test);
+	iput(root_inode);
+	free(root_inode);
+	root_inode = iget(ROOT_INODE_NUMBER);
+	log_info("BLOCK GIVEN TO ROOT AFTER IGET: %d", root_inode->d_inode.dt_blocks[0]);
+	sbfs_core_inode *nameitest = namei("/./..");
 
-	// struct dir_entry *test = malloc(sizeof(struct dir_entry));
-	// sys_read((uint64_t) root_inode, test, sizeof(struct dir_entry), sizeof(struct dir_entry));
-	// log_info("test of dir entry: %s", test->name);
+
 
 }
 

@@ -6,6 +6,7 @@
 #include "bitmap.h"
 #include "disk_op.h"
 #include "spblk.h"
+#include "dir.h"
 
 
 
@@ -28,6 +29,8 @@
 // };
 
 
+sbfs_core_inode c_inode_list[100];
+sbfs_core_inode *c_inode_free;
 
 int write_root_inode(){
 	struct sbfs_inode *root_inode = malloc(SBFS_BLOCK_SIZE);
@@ -35,6 +38,15 @@ int write_root_inode(){
 
 error:
 	return -1;
+}
+
+void init_incore_list(){
+	c_inode_free = malloc(100*sizeof(sbfs_core_inode));
+
+	int i;
+	for(i = 0; i < 100; i++){
+
+	}
 }
 
 
@@ -57,7 +69,7 @@ sbfs_core_inode *iget(uint32_t i_nmbr){
 	free(d_inode);
 	c_inode->i_nmbr = i_nmbr;
 	c_inode->status = 0;
-	c_inode->ref_count++;
+	c_inode->ref_count = 1;
 	
 	return c_inode;
 }
@@ -71,9 +83,8 @@ void iput(sbfs_core_inode *c_inode){
 			//free inode, blocks 
 		}
 		if(c_inode->status){ //if changed write to disk, do it anyways right now
-			char *buf = malloc(sizeof(sbfs_core_inode));
-			memcpy(buf, c_inode, sizeof(sbfs_core_inode));
-			sys_write((uint64_t) c_inode, buf, sizeof(sbfs_core_inode),0);
+			log_info("BLOCK GIVEN TO ROOT BEFORE WRITE: %d", c_inode->d_inode.dt_blocks[0]);
+			write_inode(c_inode);
 		}
 
 		
@@ -82,7 +93,7 @@ void iput(sbfs_core_inode *c_inode){
 	//release lock;
 }
 
-int bmap(sbfs_core_inode *c_inode, off_t offset,uint8_t *file_offset){
+int bmap(sbfs_core_inode *c_inode, off_t offset, uint8_t *file_offset){
 	log_info("Inside bmap");
 	int blk_nmbr = 0;
 	int block_pos_in_file = offset/SBFS_BLOCK_SIZE;
@@ -96,6 +107,7 @@ int bmap(sbfs_core_inode *c_inode, off_t offset,uint8_t *file_offset){
 		blk_nmbr = c_inode->d_inode.dt_blocks[block_pos_in_file];
 	}
 	//add functionality for level of indirection = 3
+	log_info("BLOCK NUMBER GIVEN BY BMAP: %d", blk_nmbr);
 	return blk_nmbr;
 }
 
@@ -103,17 +115,61 @@ int set_free_inode(int inode_number){
 
 };
 
+int write_inode(sbfs_core_inode *inode){
+	sbfs_disk_inode *buf = malloc(SBFS_BLOCK_SIZE);
+	int blk_nmbr = (FIRST_INODE_BLOCK_NMBR) + ((inode->i_nmbr) / INODE_NMBR_PER_BLOCK);
+	int inode_in_block_nmbr = (inode->i_nmbr) % INODE_NMBR_PER_BLOCK;
+	
+	read_block(buf, blk_nmbr);
+	memcpy(buf+inode_in_block_nmbr, &(inode->d_inode), sizeof(sbfs_disk_inode));
+	log_info("BLOCK GIVEN TO ROOT BEFORE WRITE: %d", inode->d_inode.dt_blocks[0]);
+	log_info("Block number of inode: %d", blk_nmbr);
+	log_info("Inode number in block: %d", inode_in_block_nmbr);
+	write_block(buf, blk_nmbr);
+	free(buf);
 
-sbfs_core_inode namei(char *path_name){
+	return 0;
+}
+
+
+sbfs_core_inode *namei(char *path_name){
  	sbfs_core_inode *working_inode = iget(2); //start with root
-
+ 	log_info("number of working inode: %d", working_inode->i_nmbr);
+ 	log_info("status of working inode: %d", working_inode->status);
+ 	char *path = malloc(strlen(path_name) + 1);
+ 	strcpy(path, path_name);
  	char *dir_name;
- 	dir_name = strtok(path_name, "/");
-
- 	int blockNumber = 0;
+ 	dir_name = strtok(path, "/");
+ 	int inodeNumber = working_inode->i_nmbr;
+ 	int increment = 0;
+ 	log_info("Dir name we are looking for: %s", dir_name);
  	while(dir_name != NULL){
- 		struct dir_entry *entry_ptr = malloc(SBFS_BLOCK_SIZE); 
- 		sys_read((uint64_t) working_inode, entry_ptr, SBFS_BLOCK_SIZE, SBFS_BLOCK_SIZE*blockNumber);
-
+ 		log_info("DIR NAME: %s", dir_name);
+ 		log_info("size of dir_entry: %d",sizeof(struct dir_entry));
+ 		struct dir_entry *entry = malloc(sizeof(struct dir_entry)); 
+ 		struct dir_entry *entry_ptr = entry;
+ 		log_info("Value of increment: %d", increment);
+ 		
+ 		if(sys_read((uint64_t) working_inode, entry_ptr, sizeof(struct dir_entry), increment*sizeof(struct dir_entry))){
+ 			if(entry_ptr->name == NULL){ //end of entries for this directory
+ 				log_info("NO ENTRY MATCHES");
+ 				return NULL; 
+ 			}
+ 			log_info("test of dir entry: %s", entry_ptr->name);
+ 			log_info("BEFOR WHILE ENTRY PTR NAME");	
+ 			log_info("Entry ptr name: %s", entry_ptr->name);
+ 			if(!strcmp(entry_ptr->name,dir_name)){
+ 				log_info("Entry ptr name FOUND: %s", entry_ptr->name);
+ 				working_inode = iget(entry_ptr->inode_number);
+ 				dir_name = strtok(NULL, "/");
+ 				increment = 0;
+ 				continue;
+ 			}
+ 		
+ 		}
+ 		increment++;
+ 		continue;
+ 		free(entry);
  	}
+ 	return working_inode;
 };

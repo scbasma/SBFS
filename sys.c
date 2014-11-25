@@ -10,19 +10,19 @@
 
 size_t sys_write(uint64_t fd, const char *buf, size_t count, off_t offset){
 
-	sbfs_core_inode *c_node = (sbfs_core_inode*) fd;
+	sbfs_core_inode *c_inode = (sbfs_core_inode*) fd;
 	
 	int number=0;
 	uint8_t file_offset;
 	log_info("Calling bmap");
-	int blk_nmbr = bmap(c_node, offset, &file_offset);
+	int blk_nmbr = bmap(c_inode, offset, &file_offset);
 	
 	//naive method, assuming everyting fits
 	if(!blk_nmbr){
-		c_node->d_inode.dt_blocks[blk_nmbr] = get_free_dblock();
+		c_inode->d_inode.dt_blocks[blk_nmbr] = get_free_dblock();
 	}
 
-	blk_nmbr = bmap(c_node, offset, &file_offset);
+	blk_nmbr = bmap(c_inode, offset, &file_offset);
 
 
 	char block_buf[SBFS_BLOCK_SIZE];
@@ -37,14 +37,13 @@ size_t sys_write(uint64_t fd, const char *buf, size_t count, off_t offset){
 	c_inode->status = 1;
 	c_inode->d_inode.a_time = time(NULL);
 	c_inode->d_inode.c_time = time(NULL);
-
 	return number;
 
 }
 
 size_t sys_read(uint64_t fd, char *buf, size_t count, off_t offset){
 	sbfs_core_inode *c_node = (sbfs_core_inode*) fd;
-	
+	log_info("read inode number: %d", c_node->i_nmbr);
 	int number=0;
 	uint8_t file_offset;
 

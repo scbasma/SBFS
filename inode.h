@@ -16,7 +16,7 @@ typedef struct {
 	uint32_t dt_blocks[15]; //15 blocks, 12 direct, 13th indirect, 14th double indirect, 15th triple indirect
 }sbfs_disk_inode;
 
-typedef struct {
+struct sbfs_core_inode {
 	sbfs_disk_inode d_inode;
 
 	uint8_t status;
@@ -24,12 +24,15 @@ typedef struct {
 	uint16_t ref_count;
 
 
-	// sbfs_core_inode *next_free;
-	// sbfs_core_inode *prev_free;
-	// sbfs_core_inode *next_hash;
-	// sbfs_core_inode *prev_hash;
+	struct sbfs_core_inode *next_free;
+	struct sbfs_core_inode *prev_free;
+	struct sbfs_core_inode *next_hash;
+	struct sbfs_core_inode *prev_hash;
 
-} sbfs_core_inode;
+};
+
+struct sbfs_core_inode;
+typedef struct sbfs_core_inode sbfs_core_inode;
 
 void init_inode(sbfs_disk_inode *inode, char mode, int size, int blk_address);
 
@@ -41,7 +44,7 @@ void iput(sbfs_core_inode *c_inode);
 
 sbfs_core_inode *allocate_free_inode();
 
-sbfs_core_inode namei(char *path);
+sbfs_core_inode *namei(char *path);
 
 int set_free_inode(int inode_number);
 
