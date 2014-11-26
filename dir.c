@@ -21,12 +21,6 @@ int add_dir(struct sbfs_inode *inode, char *name){
 	dentry->file_t = 2;
 	dentry->offset = sizeof(struct sbfs_dir_entry);
 	
-	int i;
-	for(i = 0; i < (sizeof(inode->dt_blocks)/sizeof(inode->dt_blocks[0])  ){
-		struct *dir_entry = malloc(SBFS_BLOCK_SIZE);
-		read_block(dir_entry, inode->dt_blocks[i]);
-
-	}	
 
 error:
 	return -1;

@@ -3,7 +3,7 @@
 #include "spblk.h"
 #include "inode.h"
 #include "dbg.h"
-//#include "bitmap.h"
+#include "bitmap.h"
 #include <stdlib.h> 
 #include <stdio.h>
 #include <stdint.h>
@@ -50,7 +50,7 @@ int init_inode_list(){
 	int j = 0;
 	int inode_size = sizeof(sbfs_disk_inode);
 	int blk_nmbr = 0;
-	log_info("First block number: %d", FIRST_INODE_BLOCK_NMBR);
+	// log_info("First block number: %d", FIRST_INODE_BLOCK_NMBR);
 	while(j < SBFS_NUMBER_OF_INODES){
 		
 		int i;
@@ -81,10 +81,13 @@ int init_inode_list(){
 		free(inodeBlock);
 		blk_nmbr++;
 	}
-	log_info("Last block number: %d", FIRST_INODE_BLOCK_NMBR+blk_nmbr);
-	log_info("Total size of all inodes: %d", SBFS_NUMBER_OF_INODES*inode_size);
-	log_info("Inodes per block: %d", SBFS_BLOCK_SIZE/sizeof(sbfs_disk_inode));
-	log_info("Number of blocks used: %d", blk_nmbr);
+	// log_info("Last block number: %d", FIRST_INODE_BLOCK_NMBR+blk_nmbr);
+	// log_info("Total size of all inodes: %d", SBFS_NUMBER_OF_INODES*inode_size);
+	// log_info("Inodes per block: %d", SBFS_BLOCK_SIZE/sizeof(sbfs_disk_inode));
+	// log_info("Number of blocks used: %d", blk_nmbr);
+
+
+
 	return 0;
 
 
@@ -101,9 +104,18 @@ void write_bitmaps(){
 	for(i = 0; i < NUMBER_OF_BITMAP_BLOCKS; i++){
 		int *bitmap = calloc(1024, sizeof(int));
 		write_block(bitmap, start_block+i);
-		log_info("Bitmap written to block: %d",start_block+i);
+		// log_info("Bitmap written to block: %d",start_block+i);
 		free(bitmap);
 	}
+	//initalize bitmaps correctly
+	int data_block_nmbr = 1;
+	int *d_bitmap = (int*) calloc(1024, sizeof(int)); 
+	read_block(d_bitmap, data_block_nmbr);
+	for(i = 0; i < FIRST_DATA_BLOCK; i++){
+			setBit(d_bitmap, i);
+	}
+	write_block(d_bitmap, data_block_nmbr);
+	free(d_bitmap);
 }
 
 // struct sbfs_inode {
@@ -135,13 +147,14 @@ void make_root(){
 	root_inode->d_inode.link_count +=1;
 	root_inode->d_inode.res_blocks_nmbr = 1;
 	root_inode->d_inode.flags = 0;
-	root_inode->d_inode.dt_blocks[0] = get_free_dblock();
+	root_inode->d_inode.dt_blocks[0] = balloc();
+	root_inode->d_inode.type = 2;
+	iput(root_inode);
 
-
-	log_info("BLOCK GIVEN TO ROOT: %d", root_inode->d_inode.dt_blocks[0]);
+	// log_info("BLOCK GIVEN TO ROOT: %d", root_inode->d_inode.dt_blocks[0]);
 	struct dir_entry root_entries[2];
 
-	log_info("Size of dir entry: %d", sizeof(struct dir_entry));
+	// log_info("Size of dir entry: %d", sizeof(struct dir_entry));
 	struct dir_entry *dot_entry = malloc(sizeof(struct dir_entry));
 	dot_entry->name = ".";
 	dot_entry->inode_number = 2;
@@ -156,19 +169,19 @@ void make_root(){
 	root_entries[0] = *dot_entry;
 	root_entries[1] = *dot_dot_entry;	
 
-	sys_write((uint64_t) root_inode, root_entries, sizeof(root_entries), 0);
+	sys_write(root_inode->i_nmbr, root_entries, sizeof(root_entries), 0);
 	free(dot_dot_entry);
 	free(dot_entry);
 	
-	struct dir_entry *test = malloc(sizeof(struct dir_entry));
-	sys_read((uint64_t) root_inode, test, sizeof(struct dir_entry), sizeof(struct dir_entry));
-	log_info("test of dir entry: %s", test->name);
-	free(test);
-	iput(root_inode);
-	free(root_inode);
-	root_inode = iget(ROOT_INODE_NUMBER);
-	log_info("BLOCK GIVEN TO ROOT AFTER IGET: %d", root_inode->d_inode.dt_blocks[0]);
-	sbfs_core_inode *nameitest = namei("/./..");
+	// struct dir_entry *test = malloc(sizeof(struct dir_entry));
+	// sys_read(root_inode->i_nmbr, test, sizeof(struct dir_entry), sizeof(struct dir_entry));
+	// // log_info("test of dir entry: %s", test->name);
+	// free(test);
+	
+	// free(root_inode);
+	// root_inode = iget(ROOT_INODE_NUMBER);
+	// log_info("BLOCK GIVEN TO ROOT AFTER IGET: %d", root_inode->d_inode.dt_blocks[0]);
+	//sbfs_core_inode *nameitest = namei("/..");
 
 
 
@@ -189,5 +202,9 @@ int main(int argc, int *argv[]){
 	load_disk();
 	printf("sizeof disk: %d\n", SBFS_DISK_SIZE);
 	fill_disk();
+	//sys_mknod("/hello", 2, 0770);
+	
+	sys_unlink("/etc/src");
+
 	return 0;
 }

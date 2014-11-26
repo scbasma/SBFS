@@ -27,6 +27,7 @@
 extern void *disk;
 extern sbfs_sp_blk *sp_blk;
 
+
 //int sbfs_mknod(const char *pathname, mode_t mode, dev_t dev);
 
 // 1. Finn inode (sett den incore med namei)

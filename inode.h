@@ -14,6 +14,8 @@ typedef struct {
 	uint32_t res_blocks_nmbr;
 	uint32_t flags;
 	uint32_t dt_blocks[15]; //15 blocks, 12 direct, 13th indirect, 14th double indirect, 15th triple indirect
+	uint8_t type;
+	uint8_t perm;
 }sbfs_disk_inode;
 
 struct sbfs_core_inode {
@@ -42,7 +44,7 @@ int bmap(sbfs_core_inode *c_inode, off_t offset,uint8_t *file_offset);
 
 void iput(sbfs_core_inode *c_inode);
 
-sbfs_core_inode *allocate_free_inode();
+sbfs_core_inode *ialloc();
 
 sbfs_core_inode *namei(char *path);
 

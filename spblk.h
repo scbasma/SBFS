@@ -19,7 +19,6 @@ typedef struct {
 } sbfs_sp_blk;
 
 
-int get_free_inode();
 int get_free_dblock();
 
 #endif

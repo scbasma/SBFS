@@ -49,6 +49,25 @@ void init_incore_list(){
 	}
 }
 
+void ifree(uint32_t inode_number){
+	sp_blk->number_of_inodes++;
+
+}
+
+sbfs_core_inode *ialloc(){
+	sbfs_core_inode *c_inode = malloc(sizeof(sbfs_core_inode));
+
+	int free_inode = sp_blk->next_free_inode;
+	sp_blk->next_free_inode += 1;
+	sp_blk->number_of_inodes -=1;
+	int block_nmbr = free_inode / NUMBER_OF_INODE_BITMAP_BLOCKS;
+	int *bitmap_block = (int*) calloc(1024, sizeof(int));
+	read_block(bitmap_block, FIRST_BITMAP_BLOCK_POS+block_nmbr);
+	int bitPos = free_inode - (4096*8*block_nmbr);
+	setBit(bitmap_block, bitPos);
+	c_inode = iget(free_inode);
+	return c_inode;
+}
 
 sbfs_core_inode *iget(uint32_t i_nmbr){
 	log_info("Inode core size: %d", sizeof(sbfs_core_inode));
@@ -84,8 +103,9 @@ void iput(sbfs_core_inode *c_inode){
 		}
 		if(c_inode->status){ //if changed write to disk, do it anyways right now
 			log_info("BLOCK GIVEN TO ROOT BEFORE WRITE: %d", c_inode->d_inode.dt_blocks[0]);
-			write_inode(c_inode);
 		}
+
+		write_inode(c_inode);		
 
 		
 	}
@@ -102,7 +122,7 @@ int bmap(sbfs_core_inode *c_inode, off_t offset, uint8_t *file_offset){
 		*file_offset = pos_in_block;
 	}
 	log_info("file offset: %d", *file_offset );
-
+	log_info("block pos in file: %d", block_pos_in_file );
 	if(block_pos_in_file < 12 ){ //12:number of direct blocks
 		blk_nmbr = c_inode->d_inode.dt_blocks[block_pos_in_file];
 	}
@@ -111,9 +131,7 @@ int bmap(sbfs_core_inode *c_inode, off_t offset, uint8_t *file_offset){
 	return blk_nmbr;
 }
 
-int set_free_inode(int inode_number){
 
-};
 
 int write_inode(sbfs_core_inode *inode){
 	sbfs_disk_inode *buf = malloc(SBFS_BLOCK_SIZE);
@@ -122,9 +140,9 @@ int write_inode(sbfs_core_inode *inode){
 	
 	read_block(buf, blk_nmbr);
 	memcpy(buf+inode_in_block_nmbr, &(inode->d_inode), sizeof(sbfs_disk_inode));
-	log_info("BLOCK GIVEN TO ROOT BEFORE WRITE: %d", inode->d_inode.dt_blocks[0]);
-	log_info("Block number of inode: %d", blk_nmbr);
-	log_info("Inode number in block: %d", inode_in_block_nmbr);
+	// log_info("BLOCK GIVEN TO ROOT BEFORE WRITE: %d", inode->d_inode.dt_blocks[0]);
+	// log_info("Block number of inode: %d", blk_nmbr);
+	// log_info("Inode number in block: %d", inode_in_block_nmbr);
 	write_block(buf, blk_nmbr);
 	free(buf);
 
@@ -133,9 +151,12 @@ int write_inode(sbfs_core_inode *inode){
 
 
 sbfs_core_inode *namei(char *path_name){
- 	sbfs_core_inode *working_inode = iget(2); //start with root
- 	log_info("number of working inode: %d", working_inode->i_nmbr);
- 	log_info("status of working inode: %d", working_inode->status);
+ 	sbfs_core_inode *working_inode = iget(2);
+ 	if(strcmp(path_name, "/") == 0){
+ 		return working_inode;
+ 	}	
+ 	// log_info("number of working inode: %d", working_inode->i_nmbr);
+ 	// log_info("status of working inode: %d", working_inode->status);
  	char *path = malloc(strlen(path_name) + 1);
  	strcpy(path, path_name);
  	char *dir_name;
@@ -144,20 +165,19 @@ sbfs_core_inode *namei(char *path_name){
  	int increment = 0;
  	log_info("Dir name we are looking for: %s", dir_name);
  	while(dir_name != NULL){
- 		log_info("DIR NAME: %s", dir_name);
- 		log_info("size of dir_entry: %d",sizeof(struct dir_entry));
  		struct dir_entry *entry = malloc(sizeof(struct dir_entry)); 
  		struct dir_entry *entry_ptr = entry;
- 		log_info("Value of increment: %d", increment);
+ 		// log_info("Value of increment: %d", increment);
  		
- 		if(sys_read((uint64_t) working_inode, entry_ptr, sizeof(struct dir_entry), increment*sizeof(struct dir_entry))){
+ 		if(sys_read(working_inode->i_nmbr, entry_ptr, sizeof(struct dir_entry), increment*sizeof(struct dir_entry))){
+ 			
  			if(entry_ptr->name == NULL){ //end of entries for this directory
  				log_info("NO ENTRY MATCHES");
  				return NULL; 
  			}
- 			log_info("test of dir entry: %s", entry_ptr->name);
- 			log_info("BEFOR WHILE ENTRY PTR NAME");	
- 			log_info("Entry ptr name: %s", entry_ptr->name);
+ 			// log_info("test of dir entry: %s", entry_ptr->name);
+ 			// log_info("BEFOR WHILE ENTRY PTR NAME");	
+ 			// log_info("Entry ptr name: %s", entry_ptr->name);
  			if(!strcmp(entry_ptr->name,dir_name)){
  				log_info("Entry ptr name FOUND: %s", entry_ptr->name);
  				working_inode = iget(entry_ptr->inode_number);

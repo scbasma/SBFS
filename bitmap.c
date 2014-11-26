@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include "bitmap.h"
-
+#include "dbg.h"
 
 
 
@@ -10,11 +10,11 @@ void setBit(int *bitmap, int pos){
 
 	unsigned int shifter = 1;
 	int i;
-	for(i = 0; i < pos; i++){
-		bitmap++;
-	}
-	unsigned int bit = (*bitmap | (shifter<<bitPos));
-	*bitmap = bit;
+	// for(i = 0; i < pos; i++){
+	// 	*bitmap++;
+	// }
+	unsigned int bit = (bitmap[ptPos] | (shifter<<bitPos));
+	bitmap[ptPos] = bit;
 	
 }
 
@@ -23,7 +23,7 @@ int getBit(int *bitmap, int pos){
 	int bitPos = pos%32;
 	unsigned int shifter = 1;
 	int i;
-	for(i = 0; i < pos; i++){
+	for(i = 0; i < ptPos; i++){
 		bitmap++;
 	}
 	unsigned int bit = (*bitmap & (shifter<<bitPos)) != 0;
@@ -38,7 +38,7 @@ int clearBit(int *bitmap, int pos){
 
 	unsigned int shifter = 1;
 	int i;
-	for(i = 0; i < pos; i++){
+	for(i = 0; i < ptPos; i++){
 		bitmap++;
 	}
 
@@ -46,9 +46,6 @@ int clearBit(int *bitmap, int pos){
 	return 0;
 }
 
-int check_free(int pos){
-	
-}
 
 
 // int main(int argc, int *argv[]){
@@ -57,12 +54,12 @@ int check_free(int pos){
 // 	int *i_bitmap;
 // 	i_bitmap = memory_block;
 
-// 	for(i=0; i<10; i++){
-// 		setInodeBit(i_bitmap, i);
+// 	for(i=0; i<100; i++){
+// 		setBit(i_bitmap, i);
 // 	}
 	
-// 	for(i = 0; i < 10; i++){
-// 		if(getInodeBit(i_bitmap, i) != 1){
+// 	for(i = 0; i < 100; i++){
+// 		if(getBit(i_bitmap, i) != 1){
 // 			log_info("Bit not 1 at pos: %d", i);
 // 		}
 // 	}
@@ -72,7 +69,7 @@ int check_free(int pos){
 // 	}
 
 // 	for(i = 0; i < 10; i++){
-// 		if(getInodeBit(i_bitmap, i) != 0){
+// 		if(getBit(i_bitmap, i) != 0){
 // 			log_info("Bit not 0 at pos: %d", i);
 // 		}
 // 	}
