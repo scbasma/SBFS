@@ -8,3 +8,5 @@ struct dir_entry {
 	uint8_t file_t;
 };
 
+
+struct dir_entry *get_dir(sbfs_core_inode *c_inode, uint32_t offset);

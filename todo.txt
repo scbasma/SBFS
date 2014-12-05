@@ -1,0 +1,7 @@
+- Expand block numbers to more than direct blocks (starts at page 67 section 4.2)
+- Free list and hash queue for inodes( see buffers in Bach)
+
+
+-Large file set, lseek and then write some bytes
+
+

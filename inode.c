@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h> 
+#include <libgen.h>
 #include "inode.h"
 #include "sbfs.h"
 #include "dbg.h"
@@ -58,24 +59,32 @@ sbfs_core_inode *ialloc(){
 	sbfs_core_inode *c_inode = malloc(sizeof(sbfs_core_inode));
 
 	int free_inode = sp_blk->next_free_inode;
+	log_info("Free inode from sp_blk: %d", free_inode);
 	sp_blk->next_free_inode += 1;
 	sp_blk->number_of_inodes -=1;
-	int block_nmbr = free_inode / NUMBER_OF_INODE_BITMAP_BLOCKS;
+	//int block_nmbr = free_inode / NUMBER_OF_INODE_BITMAP_BLOCKS;
+	int block_nmbr = free_inode / (4096*8);
+	
+	log_info("block_nmbr for inode in ialloc: %d", block_nmbr);
 	int *bitmap_block = (int*) calloc(1024, sizeof(int));
 	read_block(bitmap_block, FIRST_BITMAP_BLOCK_POS+block_nmbr);
 	int bitPos = free_inode - (4096*8*block_nmbr);
+	log_info("Bitpos in ialloc: %d", bitPos);
+	check_mem(bitmap_block);
 	setBit(bitmap_block, bitPos);
+	write_block(bitmap_block, FIRST_BITMAP_BLOCK_POS+block_nmbr);
 	c_inode = iget(free_inode);
+	free(bitmap_block);
 	return c_inode;
+
+error:
+	return NULL;
 }
 
 sbfs_core_inode *iget(uint32_t i_nmbr){
-	log_info("Inode core size: %d", sizeof(sbfs_core_inode));
+	
 	int blk_nmbr = (FIRST_INODE_BLOCK_NMBR) + (i_nmbr / INODE_NMBR_PER_BLOCK);
 	int inode_in_block_nmbr = i_nmbr % INODE_NMBR_PER_BLOCK;
-	
-	log_info("Block number of inode: %d", blk_nmbr);
-	log_info("Inode number in block: %d", inode_in_block_nmbr);
 	
 	sbfs_disk_inode *inode_block = malloc(SBFS_BLOCK_SIZE);
 	read_block(inode_block, blk_nmbr);
@@ -138,6 +147,7 @@ int write_inode(sbfs_core_inode *inode){
 	int blk_nmbr = (FIRST_INODE_BLOCK_NMBR) + ((inode->i_nmbr) / INODE_NMBR_PER_BLOCK);
 	int inode_in_block_nmbr = (inode->i_nmbr) % INODE_NMBR_PER_BLOCK;
 	
+
 	read_block(buf, blk_nmbr);
 	memcpy(buf+inode_in_block_nmbr, &(inode->d_inode), sizeof(sbfs_disk_inode));
 	// log_info("BLOCK GIVEN TO ROOT BEFORE WRITE: %d", inode->d_inode.dt_blocks[0]);
@@ -152,41 +162,46 @@ int write_inode(sbfs_core_inode *inode){
 
 sbfs_core_inode *namei(char *path_name){
  	sbfs_core_inode *working_inode = iget(2);
- 	if(strcmp(path_name, "/") == 0){
+ 	log_info("SIZE OF WORKING INODE: %d", working_inode->d_inode.size)
+; 	if(strcmp(path_name, "/") == 0){
  		return working_inode;
  	}	
  	// log_info("number of working inode: %d", working_inode->i_nmbr);
  	// log_info("status of working inode: %d", working_inode->status);
  	char *path = malloc(strlen(path_name) + 1);
  	strcpy(path, path_name);
+ 	char *filenamec = strdup(path);
+ 	char *filename; 
+ 	filename = basename(filenamec);
+ 	log_info("Path name in namei: %s", path);
  	char *dir_name;
  	dir_name = strtok(path, "/");
  	int inodeNumber = working_inode->i_nmbr;
  	int increment = 0;
  	log_info("Dir name we are looking for: %s", dir_name);
  	while(dir_name != NULL){
- 		struct dir_entry *entry = malloc(sizeof(struct dir_entry)); 
- 		struct dir_entry *entry_ptr = entry;
- 		// log_info("Value of increment: %d", increment);
  		
- 		if(sys_read(working_inode->i_nmbr, entry_ptr, sizeof(struct dir_entry), increment*sizeof(struct dir_entry))){
- 			
- 			if(entry_ptr->name == NULL){ //end of entries for this directory
- 				log_info("NO ENTRY MATCHES");
- 				return NULL; 
- 			}
- 			// log_info("test of dir entry: %s", entry_ptr->name);
- 			// log_info("BEFOR WHILE ENTRY PTR NAME");	
- 			// log_info("Entry ptr name: %s", entry_ptr->name);
- 			if(!strcmp(entry_ptr->name,dir_name)){
- 				log_info("Entry ptr name FOUND: %s", entry_ptr->name);
- 				working_inode = iget(entry_ptr->inode_number);
- 				dir_name = strtok(NULL, "/");
- 				increment = 0;
- 				continue;
- 			}
- 		
- 		}
+ 		struct dir_entry *entry = get_dir(working_inode, increment*(sizeof(struct dir_entry))); 
+		
+		if(entry == NULL){
+			log_info("Entry NOT FOUND.");
+			return NULL;
+		}
+		if(entry != NULL && strcmp(entry->name, filename) == 0){
+			working_inode = iget(entry->inode_number);
+			//return working_inode;
+		}
+		// log_info("test of dir entry: %s", entry_ptr->name);
+		// log_info("BEFOR WHILE ENTRY PTR NAME");	
+		// log_info("Entry ptr name: %s", entry_ptr->name);
+		if(strcmp(entry->name,dir_name) == 0){
+			log_info("Entry ptr name FOUND: %s", entry->name);
+			working_inode = iget(entry->inode_number);
+			dir_name = strtok(NULL, "/");
+			increment = 0;
+			continue;
+		}
+
  		increment++;
  		continue;
  		free(entry);

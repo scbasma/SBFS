@@ -10,17 +10,19 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include "sys.h"
 
 
 
 
 int sbfs_mknod(const char *pathname, mode_t mode, dev_t dev){
-	//only care about pathname for now
+	sys_mknod(pathname, 1, mode);
+	return 0;
 };
 
 
 int sbfs_mkdir(const char *path, mode_t mode){
-
+	return sys_mkdir(path, mode);
 };
 
 int sbfs_rmdir(const char *path){
@@ -41,7 +43,7 @@ int sbfs_chown(const char *path, uid_t uid, gid_t gid){
 
 
 int sbfs_unlink(const char *path){
-
+	return sys_unlink(path);
 };
 
 int sbfs_open(char *pathname, struct fuse_file_info *fi){
@@ -68,7 +70,7 @@ int sbfs_write(char *pathname, const char *buf, size_t size, off_t offset, struc
 };
 
 void sbfs_init(struct fuse_conn_info *conn){
-
+	return (FILE*)fuse_get_context()->private_data;
 }
 
 struct fuse_operation sbfs_operations = {
@@ -86,5 +88,14 @@ struct fuse_operation sbfs_operations = {
 
 int main(int argc, char *argv[]){
 
+	if (argc < 3){
+		printf("needs 2 args: path of device and path of mount point");
+	}
+
+	int stat;
+
+	stat = fuse_main(argc, argv, &sbfs_operations, stat);
+
+	return stat;
 }
 

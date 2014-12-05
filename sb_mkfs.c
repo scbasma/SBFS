@@ -8,10 +8,14 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include "time.h"
 #include "sys.h"
 #include "dir.h"
-
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <limits.h>
 
 
 /**
@@ -22,7 +26,14 @@ Superblock | block bitmap*2 | inode bitmap*2 | inodes
 */
 
 sbfs_sp_blk *sp_blk;
+//int disk;
 
+// int load_disk(char *path){
+// 	if(disk = open(path, O_RDWR) == -1){
+// 		return -1;
+// 	}
+// 	return 0;
+// }
 
 void write_super_block(){
 	sp_blk = malloc(sizeof(sbfs_sp_blk));
@@ -59,6 +70,7 @@ int init_inode_list(){
 		check_mem(inodeBlock);
 		for(i = 0; i < INODE_NMBR_PER_BLOCK ; i++, j++){
 			sbfs_disk_inode *new_inode = malloc(inode_size);
+			new_inode->i_nmbr = j;
 			new_inode->mode = 770;
 			new_inode->size = 0;
 			new_inode->a_time = 0;
@@ -167,9 +179,10 @@ void make_root(){
 	dot_dot_entry->offset = sizeof(struct dir_entry);
 	dot_dot_entry->file_t = 2;
 	root_entries[0] = *dot_entry;
-	root_entries[1] = *dot_dot_entry;	
+	root_entries[1] = *dot_dot_entry;
 
-	sys_write(root_inode->i_nmbr, root_entries, sizeof(root_entries), 0);
+
+	sys_write(root_inode->i_nmbr, (char * ) root_entries, sizeof(root_entries), 0);
 	free(dot_dot_entry);
 	free(dot_entry);
 	
@@ -199,12 +212,38 @@ void fill_disk(){
 
 
 int main(int argc, int *argv[]){
-	load_disk();
-	printf("sizeof disk: %d\n", SBFS_DISK_SIZE);
-	fill_disk();
-	//sys_mknod("/hello", 2, 0770);
+	// if(argc < 2){
+	// 	printf("1 arg required: path");
+	// 	return -1;
+	// }
+	// char* path = realpath(argv[1], NULL);
 	
-	sys_unlink("/etc/src");
+	//load_disk(path);
 
+	load_disk();
+	fill_disk();
+	int i;
+	for(i = 0; i < SBFS_NUMBER_OF_INODES; i++){
+		sbfs_core_inode *c_inode = iget(i);
+		check(c_inode->i_nmbr == c_inode->d_inode.i_nmbr, "i_nmbr not corresponding");
+		free(c_inode);
+	}
+	//close(disk);
+	sys_mknod("/test",2, 0770);
+	sys_mknod("/test/hello", 2, 0770);
+	sys_mknod("/hellohello",2, 0770);
+	sys_mknod("/hello3",2, 0770);
+	sys_mknod("/hello/test",2, 0770);
+
+
+	
+	sbfs_core_inode *c_inode = namei("/hellohello");
+	if(c_inode){
+			log_info("test inode number: %d", c_inode->i_nmbr);
+			free(c_inode);
+	}
 	return 0;
-}
+
+error:
+	return -1;
+};

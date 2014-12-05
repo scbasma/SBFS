@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 typedef struct {
+	uint32_t i_nmbr;
 	uint16_t mode;
 	uint16_t user_id;
 	uint32_t size;

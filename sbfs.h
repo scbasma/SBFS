@@ -5,7 +5,7 @@
 #include "inode.h"
 
 #define SBFS_BLOCK_SIZE 4096
-#define SBFS_NUMBER_OF_BLOCKS 65536 //4 blocks of data bitmaps
+#define SBFS_NUMBER_OF_BLOCKS 32768 //4 blocks of data bitmaps
 #define SBFS_DISK_SIZE SBFS_BLOCK_SIZE*SBFS_NUMBER_OF_BLOCKS
 #define SBFS_NUMBER_OF_INODES 65536 // equals two blocks of bitmaps
 //#define SBFS_NUMBER_OF_DATA_BLOCKS 53
@@ -25,6 +25,8 @@
 
 
 extern void *disk;
+//extern int disk;
+
 extern sbfs_sp_blk *sp_blk;
 
 

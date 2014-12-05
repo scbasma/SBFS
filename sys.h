@@ -23,7 +23,7 @@ int sys_getattr(const char *path, struct stat *statbuf);
 
 size_t sys_read(uint64_t fd, void *buf, size_t count, off_t offset); //return number of bytes read from file from offset with descriptor fd, into buf
 
-size_t sys_write(uint64_t fd, const void *buf, size_t count, off_t offset); //writes up to count bytes to the file referenced by the file descriptor fd from buf
+size_t sys_write(uint64_t fd, const char *buf, size_t count, off_t offset); //writes up to count bytes to the file referenced by the file descriptor fd from buf
 //returns number of bytes written
 
 //have to read the specified block in order to add stuff at specified place
