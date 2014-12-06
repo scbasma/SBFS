@@ -78,7 +78,7 @@ size_t sys_read(uint32_t fd, char *buf, size_t count, off_t offset){
 
 }
 
-uint32_t sys_open(char *path, int flags, mode_t mode){
+uint32_t sys_open(const char *path, int flags, mode_t mode){
 	sbfs_core_inode *inode = namei(path);
 
 	if(!inode){
@@ -89,7 +89,7 @@ uint32_t sys_open(char *path, int flags, mode_t mode){
 }
 
 
-uint32_t sys_mknod(char *path, uint8_t file_t, mode_t mode){
+uint32_t sys_mknod(const char *path, uint8_t file_t, mode_t mode){
 	log_info("INSIDE MKNOD");
 	sbfs_core_inode *inode = namei(path);
 
@@ -173,14 +173,26 @@ uint32_t sys_mknod(char *path, uint8_t file_t, mode_t mode){
 }
 
 
-int sys_mkdir(char *path, mode_t mode){
-	sys_mknod(path, 2, mode);
-	return 0;
+int sys_mkdir(const char *path, mode_t mode){
+	const char *pathname = path;
+	int ret = sys_mknod(pathname, 2, mode);
+	return ret;
 }
 
 
 int sys_readdir(){
-
+	// int increment = -1;
+	// while(1){
+	// 	struct dir_entry *entry = malloc(sizeof(struct dir_entry)); 
+	//  	increment++;
+	//  	entry = get_dir(p_inode, increment*(sizeof(struct dir_entry))); 
+	 			
+	// 	if((entry == NULL)){ //end of entries for this directory
+	// 		log_info("reached end of entries");
+	// 		return -1; 
+	// 	}
+	
+	// }
 }
 
 
@@ -196,24 +208,23 @@ int sys_unlink(char *path){
 	int increment = -1;
 	while(1){
 		struct dir_entry *entry = malloc(sizeof(struct dir_entry)); 
-	 	struct dir_entry *entry_ptr = entry;
 	 	increment++;
-	 	if(sys_read(p_inode->i_nmbr, (char*) entry_ptr, sizeof(struct dir_entry), increment*sizeof(struct dir_entry))){
+	 	entry = get_dir(p_inode, increment*(sizeof(struct dir_entry))); 
 	 			
-	 			if(!(entry_ptr->inode_number)){ //end of entries for this directory
-	 				log_info("NO ENTRY MATCHES");
-	 				return -1; 
-	 			}
-	 			if(entry_ptr->inode_number == c_inode->i_nmbr){
-	 				entry_ptr->inode_number = 0;
-	 				c_inode->d_inode.link_count -= 1;
-	 				iput(p_inode);
-	 				iput(c_inode); //iput takes care of delegating to bfree and ifree
-	 				return 0;
-	 			}
-	 		
-	 		}
-	 	}
+		if((entry == NULL)){ //end of entries for this directory
+			log_info("NO ENTRY MATCHES");
+			return -1; 
+		}
+		if(entry->inode_number == c_inode->i_nmbr){
+			entry->inode_number = 0;
+			c_inode->d_inode.link_count -= 1;
+			sys_write(p_inode->i_nmbr, (char *) entry, sizeof(entry), increment*(sizeof(struct dir_entry)));
+			iput(p_inode);
+			iput(c_inode); //iput takes care of delegating to bfree and ifree
+			return 0;
+		}
+	
+	}
 
 	return 0;
 }

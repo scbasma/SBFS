@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 
-int sys_mkdir(char *path, mode_t mode);
+int sys_mkdir(const char *path, mode_t mode);
 
 int sys_mknod(const char *path, mode_t mode, dev_t dev); //what's up with the dev_t?->kind of file? yes i think so
 

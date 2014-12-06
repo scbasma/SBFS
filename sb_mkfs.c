@@ -210,40 +210,44 @@ void fill_disk(){
 	make_root();
 }
 
-
-int main(int argc, int *argv[]){
-	// if(argc < 2){
-	// 	printf("1 arg required: path");
-	// 	return -1;
-	// }
-	// char* path = realpath(argv[1], NULL);
-	
-	//load_disk(path);
-
+void mkfs(){
 	load_disk();
 	fill_disk();
-	int i;
-	for(i = 0; i < SBFS_NUMBER_OF_INODES; i++){
-		sbfs_core_inode *c_inode = iget(i);
-		check(c_inode->i_nmbr == c_inode->d_inode.i_nmbr, "i_nmbr not corresponding");
-		free(c_inode);
-	}
-	//close(disk);
-	sys_mknod("/test",2, 0770);
-	sys_mknod("/test/hello", 2, 0770);
-	sys_mknod("/hellohello",2, 0770);
-	sys_mknod("/hello3",2, 0770);
-	sys_mknod("/hello/test",2, 0770);
+}
+
+// int main(int argc, int *argv[]){
+// 	// if(argc < 2){
+// 	// 	printf("1 arg required: path");
+// 	// 	return -1;
+// 	// }
+// 	// char* path = realpath(argv[1], NULL);
+	
+// 	//load_disk(path);
+// 	mkfs();
+// 	int i;
+// 	for(i = 0; i < SBFS_NUMBER_OF_INODES; i++){
+// 		sbfs_core_inode *c_inode = iget(i);
+// 		check(c_inode->i_nmbr == c_inode->d_inode.i_nmbr, "i_nmbr not corresponding");
+// 		free(c_inode);
+// 	}
+// 	//close(disk);
+// 	sys_mknod("/test",2, 0770);
+// 	sys_mknod("/test/hello", 2, 0770);
+// 	sys_mknod("/hellohello",2, 0770);
+// 	sys_mknod("/hello3",2, 0770);
+// 	sys_mknod("/hello/test",2, 0770);
 
 
 	
-	sbfs_core_inode *c_inode = namei("/hellohello");
-	if(c_inode){
-			log_info("test inode number: %d", c_inode->i_nmbr);
-			free(c_inode);
-	}
-	return 0;
+// 	sbfs_core_inode *c_inode = namei("/hellohello");
+// 	sys_unlink("/hellohello");
+// 	c_inode = namei("/hellohello");
+// 	if(c_inode){
+// 			log_info("test inode number: %d", c_inode->i_nmbr);
+// 			free(c_inode);
+// 	}
+// 	return 0;
 
-error:
-	return -1;
-};
+// error:
+// 	return -1;
+// };

@@ -160,7 +160,9 @@ int write_inode(sbfs_core_inode *inode){
 }
 
 
-sbfs_core_inode *namei(char *path_name){
+sbfs_core_inode *namei(const char *one_path){
+	char * path_name = malloc(sizeof(*one_path)); 
+	strcpy(path_name, one_path);
  	sbfs_core_inode *working_inode = iget(2);
  	log_info("SIZE OF WORKING INODE: %d", working_inode->d_inode.size)
 ; 	if(strcmp(path_name, "/") == 0){

@@ -47,7 +47,7 @@ void iput(sbfs_core_inode *c_inode);
 
 sbfs_core_inode *ialloc();
 
-sbfs_core_inode *namei(char *path);
+sbfs_core_inode *namei(const char *path);
 
 int set_free_inode(int inode_number);
 
