@@ -19,7 +19,7 @@ size_t sys_write(uint32_t fd, const char *buf, size_t count, off_t offset){
 	sbfs_core_inode *c_inode = iget(fd);
 	
 	uint8_t file_offset;
-	log_info("Calling bmap with offset: %d", offset);
+	
 	int blk_nmbr = bmap(c_inode, offset, &file_offset);
 	
 	//naive method, assuming everyting fits
@@ -29,7 +29,7 @@ size_t sys_write(uint32_t fd, const char *buf, size_t count, off_t offset){
 
 
 	char block_buf[SBFS_BLOCK_SIZE];
-	log_info("Reading blocknr in write: %d ", blk_nmbr);
+
 	read_block(block_buf, blk_nmbr);
 	
 	int number=0;
@@ -85,8 +85,8 @@ uint32_t sys_open(const char *path, int flags, mode_t mode){
 
 
 uint32_t sys_mknod(const char *path, uint8_t file_t, mode_t mode){
+	log_info("sys_mknod FILE TYPE: %d", file_t);
 	sbfs_core_inode *inode = namei(path);
-
 	if(inode != NULL){
 		return -1; //file already exists
 	}
@@ -118,11 +118,20 @@ uint32_t sys_mknod(const char *path, uint8_t file_t, mode_t mode){
 	root_entries[0] = *entry;
 	inode->status = 1;
 	inode->d_inode.m_time = time(NULL);
+	inode->d_inode.a_time = time(NULL);
 	sys_write(inode->i_nmbr, (char * )root_entries, sizeof(root_entries), inode->d_inode.size);
 
 	new_inode->d_inode.type = file_t;
 	new_inode->d_inode.perm = mode & 0777;
 	new_inode->d_inode.dt_blocks[0] = balloc();
+
+	new_inode->status = 1;
+	new_inode->d_inode.m_time = time(NULL);
+	new_inode->d_inode.c_time = time(NULL);
+	new_inode->d_inode.a_time = time(NULL);
+	new_inode->d_inode.link_count = 2;
+	new_inode->d_inode.user_id = getuid();
+	new_inode->d_inode.grp_id = getgid();
 	iput(new_inode);
 
 	if(file_t == 2){
@@ -141,12 +150,7 @@ uint32_t sys_mknod(const char *path, uint8_t file_t, mode_t mode){
 			dot_dot_entry->offset = sizeof(struct dir_entry);
 			dot_dot_entry->file_t = 2;
 			dir_entries[0] = *dot_entry;
-			dir_entries[1] = *dot_dot_entry;	
-
-			new_inode->status = 1;
-			new_inode->d_inode.m_time = time(NULL);
-			new_inode->d_inode.c_time = time(NULL);
-			new_inode->d_inode.link_count = 2;
+			dir_entries[1] = *dot_dot_entry;	;
 			sys_write(new_inode->i_nmbr, (char *) &dir_entries, sizeof(dir_entries), 0);
 			free(dot_dot_entry);
 			free(dot_entry);
@@ -192,6 +196,7 @@ int sys_unlink(char *path){
 			return -1; 
 		}
 		if(entry->inode_number == c_inode->i_nmbr){
+			entry->name = "\0";
 			entry->inode_number = 0;
 			c_inode->d_inode.link_count -= 1;
 			sys_write(p_inode->i_nmbr, (char *) entry, sizeof(entry), increment*(sizeof(struct dir_entry)));

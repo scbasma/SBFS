@@ -36,11 +36,11 @@
 struct dir_entry *get_dir(sbfs_core_inode *c_inode, uint32_t offset){
 	
 	if(offset % sizeof(struct dir_entry) != 0){
-		log_err("offset at get_dir: not compatible with size of dir_entry");
+		//log_err("offset at get_dir: not compatible with size of dir_entry");
 		return NULL; //not able to find directory
 	}
 	if(offset >= c_inode->d_inode.size){
-		log_err("offset larger than inode_size with offset: %d and inode_size: %d, this is inode %d", offset, c_inode->d_inode.size, c_inode->i_nmbr);
+		//log_err("offset larger than inode_size with offset: %d and inode_size: %d, this is inode %d", offset, c_inode->d_inode.size, c_inode->i_nmbr);
 		return NULL;
 	}
 

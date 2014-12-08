@@ -54,11 +54,14 @@ int sbfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offs
 			free(entry);
 			return 0; 
 		}
-
-		if(filler(buf, entry->name, NULL, 0) != 0){
-			log_info("Memory error: buffer full");
-			free(entry);
-			return -ENOMEM;
+		log_info("ENTRY NAME IN READDIR: %s", entry->name);
+		log_info("ENTRY INODE_NUMBER IN READDIR: %d", entry->inode_number);
+		if(entry->inode_number != 0){
+			if(filler(buf, entry->name, NULL, 0) != 0){
+				log_info("Memory error: buffer full");
+				free(entry);
+				return -ENOMEM;
+			}
 		}
 	}
 	free(entry);
@@ -72,6 +75,17 @@ int sbfs_chmod(const char *path, mode_t mode){
 int sbfs_chown(const char *path, uid_t uid, gid_t gid){
 
 };
+
+int sbfs_utimens(const char *path, const struct timespec tv[2]){
+	sbfs_core_inode *inode = namei(path);
+	if(inode == NULL){
+		return -ENOENT;
+	}
+	inode->d_inode.a_time = tv[0].tv_sec;
+	inode->d_inode.m_time = tv[1].tv_sec;
+	iput(inode);
+	return 0;
+}
 
 
 int sbfs_unlink(const char *path){
@@ -100,6 +114,21 @@ int sbfs_read(const char *path, char *buf, size_t size, off_t offset, struct fus
 	return count;
 };
 
+int sbfs_truncate(const char *path, off_t size){
+	sbfs_core_inode *inode = namei(path);
+	if(inode == NULL){
+		return -ENOENT;
+	}
+	char *buf = malloc(size);
+	sys_write(inode->i_nmbr, buf, size, 0);
+ return 0;
+
+}
+
+int sbfs_access(const char *path, int mask){
+
+}
+
 int sbfs_write(const char *pathname, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi){
 	int count = sys_write(fi->fh, buf, size, offset);
 	return count;
@@ -114,7 +143,7 @@ int sbfs_getattr(const char *path, struct stat *stbuf){
 	int res = 0;
 	sbfs_core_inode *inode = namei(path);
 	memset(stbuf, 0, sizeof(struct stat));
-	if(inode == NULL){
+	if(inode == NULL || (inode->i_nmbr == 0)){
 		return -ENOENT;
 	}
 	log_info("inode nmbr: %d", inode->i_nmbr);
@@ -122,10 +151,16 @@ int sbfs_getattr(const char *path, struct stat *stbuf){
 	stbuf->st_ino = inode->i_nmbr;
 	stbuf->st_gid = inode->d_inode.grp_id;
 	stbuf->st_uid = inode->d_inode.user_id;
-	stbuf->st_mode = S_IFDIR | 0755;
+	if(inode->d_inode.type == 1){
+		stbuf->st_mode = S_IFREG | 0777;
+	}
+	else if(inode->d_inode.type == 2){
+		stbuf->st_mode = S_IFDIR | 0777;
+	}
 	stbuf->st_nlink = 2;
 	stbuf->st_atime = inode->d_inode.a_time;
 	stbuf->st_mtime = inode->d_inode.m_time;
+	stbuf->st_ctime = inode->d_inode.c_time;
 
 	return res;
 }
@@ -138,13 +173,15 @@ struct fuse_operations sbfs_operations = {
 	.getattr = sbfs_getattr,
 	.mkdir = sbfs_mkdir, 
 	.mknod = sbfs_mknod,
-	//.rmdir = sbfs_rmdir,
+	.truncate = sbfs_truncate,
+	.rmdir = sbfs_rmdir,
 	.readdir = sbfs_readdir,
-	//.unlink  = sbfs_unlink,
+	.unlink  = sbfs_unlink,
 	.open = sbfs_open,
-	//.opendir = sbfs_opendir,
+	.opendir = sbfs_opendir,
 	.read = sbfs_read,
 	.write = sbfs_write,
+	.utimens = sbfs_utimens
 	// .init = sbfs_init
 };
 
@@ -156,6 +193,7 @@ int main(int argc, char *argv[]){
 
 	int stat;
 	mkfs();
+	umask(0);
 	stat = fuse_main(argc, argv, &sbfs_operations, NULL);
 
 	return stat;

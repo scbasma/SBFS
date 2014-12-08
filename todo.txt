@@ -2,6 +2,24 @@
 - Free list and hash queue for inodes( see buffers in Bach)
 
 
--Large file set, lseek and then write some bytes
 
 
+Implementer double and triple indirect block allocation
+implementer bfree og ifree. 
+Timehandling not working
+Handle permissions correctly --- started
+writing larger files
+setting number of links to file correctly
+file flags
+inode and block handling when unlinking
+
+Testing:
+	-Large file set, lseek and then write some bytes
+
+
+	First:
+
+		When to write inode to disk?
+		When to use iput?
+
+		

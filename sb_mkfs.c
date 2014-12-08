@@ -151,7 +151,7 @@ void write_bitmaps(){
 
 void make_root(){
 	sbfs_core_inode *root_inode = iget(ROOT_INODE_NUMBER);
-	root_inode->d_inode.mode = 0770;
+	root_inode->d_inode.mode = 0777;
 	root_inode->d_inode.user_id=getuid();
 	root_inode->d_inode.grp_id=getgid();
 	root_inode->d_inode.a_time = time(NULL);
