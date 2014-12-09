@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <unistd.h>
 #include "sys.h"
 #include "inode.h"
 #include "sb_mkfs.h"
@@ -69,11 +70,31 @@ int sbfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offs
 }
 
 int sbfs_chmod(const char *path, mode_t mode){
+	sbfs_core_inode *inode = namei(path);
+
+	if(inode == NULL){
+		return -ENOENT;
+	}
+
+	inode->d_inode.perm = mode;
+	iput(inode);
+
+	return 0;
+
+
 
 };
 
 int sbfs_chown(const char *path, uid_t uid, gid_t gid){
+	sbfs_core_inode *inode = namei(path);
+	if(inode == NULL){
+		return -ENOENT;
+	}
 
+	inode->d_inode.grp_id = gid;
+	inode->d_inode.user_id = uid;
+	iput(inode);
+	return 0;
 };
 
 int sbfs_utimens(const char *path, const struct timespec tv[2]){
@@ -126,7 +147,29 @@ int sbfs_truncate(const char *path, off_t size){
 }
 
 int sbfs_access(const char *path, int mask){
+	log_info("access called with path: %s and mask: %d", path, mask);
+	log_info("X_OK %d", X_OK);
+	sbfs_core_inode *inode = namei(path);
 
+	if(inode == NULL){
+		return -ENOENT;
+	}
+	mode_t mode = inode->d_inode.perm;
+	log_info("permissions of inode %d", inode->d_inode.perm);
+	if(mask & F_OK){
+		return 0;
+	} 
+	else if( (mask & R_OK) && (mode & S_IREAD) ){
+		return 0;
+	}
+	else if ( (mask & W_OK ) && (mode & S_IWRITE) ){
+		return 0;
+	}
+	else if( (mask & X_OK) && (mode & S_IEXEC)){
+		return 0;
+	}
+
+	return -1;
 }
 
 int sbfs_write(const char *pathname, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi){
@@ -181,7 +224,8 @@ struct fuse_operations sbfs_operations = {
 	.opendir = sbfs_opendir,
 	.read = sbfs_read,
 	.write = sbfs_write,
-	.utimens = sbfs_utimens
+	.utimens = sbfs_utimens,
+	.access = sbfs_access
 	// .init = sbfs_init
 };
 

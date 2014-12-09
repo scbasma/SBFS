@@ -161,6 +161,7 @@ void make_root(){
 	root_inode->d_inode.flags = 0;
 	root_inode->d_inode.dt_blocks[0] = balloc();
 	root_inode->d_inode.type = 2;
+	root_inode->d_inode.perm = 0777;
 	iput(root_inode);
 
 	// log_info("BLOCK GIVEN TO ROOT: %d", root_inode->d_inode.dt_blocks[0]);

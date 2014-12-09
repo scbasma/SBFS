@@ -6,7 +6,7 @@ typedef struct {
 	uint32_t i_nmbr;
 	uint16_t mode;
 	uint16_t user_id;
-	uint32_t size;
+	uint64_t size;
 	uint32_t a_time;
 	uint32_t m_time;
 	uint32_t c_time;
@@ -16,7 +16,7 @@ typedef struct {
 	uint32_t flags;
 	uint32_t dt_blocks[15]; //15 blocks, 12 direct, 13th indirect, 14th double indirect, 15th triple indirect
 	uint8_t type;
-	uint8_t perm;
+	uint32_t perm;
 }sbfs_disk_inode;
 
 struct sbfs_core_inode {

@@ -8,6 +8,7 @@
 #include "disk_op.h"
 #include "spblk.h"
 #include "dir.h"
+#include "datablock.h"
 
 
 
@@ -129,6 +130,95 @@ int bmap(sbfs_core_inode *c_inode, off_t offset, uint8_t *file_offset){
 
 	if(block_pos_in_file < 12 ){ //12:number of direct blocks
 		blk_nmbr = c_inode->d_inode.dt_blocks[block_pos_in_file];
+		if (blk_nmbr == 0){
+			blk_nmbr = balloc();
+			if(blk_nmbr == 0) return -1;
+			c_inode->d_inode.dt_blocks[block_pos_in_file] = blk_nmbr;
+		}
+	}
+	else if(block_pos_in_file < (12+1024)){ //first indirect block, with 1024 block numbers together with the first 12 direct
+		uint32_t indirect_block_nmbr = c_inode->d_inode.dt_blocks[12];
+
+		if(indirect_block_nmbr == 0){
+			indirect_block_nmbr = balloc();
+			c_inode->d_inode.dt_blocks[12] = indirect_block_nmbr;
+			uint32_t blk_nmbr = balloc();
+
+			uint32_t *buf = malloc(SBFS_BLOCK_SIZE);
+			//initialize every value in new indirect block to zero
+			int i;
+			for(i = 0; i < SBFS_BLOCK_SIZE/sizeof(uint32_t); i++){
+				*(buf++) = 0;
+			};
+			*(buf+(block_pos_in_file-12)) = blk_nmbr;
+			write_block(buf, indirect_block_nmbr);
+			free(buf);
+
+			return blk_nmbr;
+
+		}
+
+		uint32_t *buf = malloc(SBFS_BLOCK_SIZE);
+		read_block(buf, indirect_block_nmbr);
+		uint32_t blk_nmbr = *(buf+(block_pos_in_file-12));
+
+		if(blk_nmbr == NULL || blk_nmbr == 0){
+			blk_nmbr = balloc();
+			*(buf+(block_pos_in_file-12)) = blk_nmbr;
+			write_block(buf, indirect_block_nmbr);
+		}
+
+		free(buf);
+		return blk_nmbr;
+
+	}
+	else if(block_pos_in_file < (12+1024*1024)){ //double indirect block
+		uint32_t first_block = block_pos_in_file-(12+1024);
+		uint32_t sec_block = first_block/(1024*1024);
+		uint32_t third_block = first_block - sec_block*1024;
+
+		uint32_t double_indirect_block_nmbr = c_inode->d_inode.dt_blocks[13];
+		uint32_t *buf = malloc(SBFS_BLOCK_SIZE);
+		
+		if(double_indirect_block_nmbr == 0){
+
+			double_indirect_block_nmbr = balloc();
+			c_inode->d_inode.dt_blocks[13] = double_indirect_block_nmbr;
+			//initialize values in new double indirect block to 0
+			int i;
+			for(i = 0; i < SBFS_BLOCK_SIZE/sizeof(uint32_t); i++){
+				*(buf++) = 0;
+			};
+			uint32_t indirect_block_nmbr = balloc();
+			*(buf+sec_block) = indirect_block_nmbr;
+			write_block(buf, double_indirect_block_nmbr);
+			read_block(buf, indirect_block_nmbr);
+			//initialize values in new indirect block to 0
+			for(i = 0; i < SBFS_BLOCK_SIZE/sizeof(uint32_t); i++){
+				*(buf++) = 0;
+			};
+			uint32_t blk_nmbr = balloc();
+			*(buf+third_block) = blk_nmbr;
+			free(buf);
+			return blk_nmbr;
+
+		}
+		read_block(buf, double_indirect_block_nmbr);
+		uint32_t indirect_block_nmbr = *(buf+sec_block);
+		if(indirect_block_nmbr == NULL || indirect_block_nmbr == 0){
+			indirect_block_nmbr = balloc();
+			*(buf+sec_block) = indirect_block_nmbr;
+		}
+		read_block(buf, indirect_block_nmbr);
+		uint32_t blk_nmbr = *(buf+third_block);
+
+		if(blk_nmbr == NULL || blk_nmbr == 0){
+			blk_nmbr = balloc();
+			*(buf+third_block) = blk_nmbr;
+		}
+		free(buf);
+		return blk_nmbr;
+
 	}
 	//add functionality for level of indirection = 3
 	

@@ -122,7 +122,7 @@ uint32_t sys_mknod(const char *path, uint8_t file_t, mode_t mode){
 	sys_write(inode->i_nmbr, (char * )root_entries, sizeof(root_entries), inode->d_inode.size);
 
 	new_inode->d_inode.type = file_t;
-	new_inode->d_inode.perm = mode & 0777;
+	new_inode->d_inode.perm = 0777;
 	new_inode->d_inode.dt_blocks[0] = balloc();
 
 	new_inode->status = 1;
