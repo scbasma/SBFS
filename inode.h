@@ -41,7 +41,7 @@ void init_inode(sbfs_disk_inode *inode, char mode, int size, int blk_address);
 
 sbfs_core_inode *iget(uint32_t i_nmbr);
 
-int bmap(sbfs_core_inode *c_inode, off_t offset,uint8_t *file_offset);
+int bmap(sbfs_core_inode *c_inode, off_t offset,uint32_t *file_offset);
 
 void iput(sbfs_core_inode *c_inode);
 
@@ -50,5 +50,7 @@ sbfs_core_inode *ialloc();
 sbfs_core_inode *namei(const char *path);
 
 int set_free_inode(int inode_number);
+
+int write_inode(sbfs_core_inode *inode);
 
 #endif

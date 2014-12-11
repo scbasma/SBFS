@@ -5,6 +5,20 @@
 #include "datablock.h"
 #include "sbfs.h"
 #include "dbg.h"
+#include "disk_op.h"
+#include "bitmap.h"
+
+
+int init_dt_blks(){
+	int i;
+	for(i = FIRST_DATA_BLOCK; i < SBFS_NUMBER_OF_BLOCKS; i++){
+		void *emptyBlock = calloc(1, SBFS_BLOCK_SIZE);
+		write_block(emptyBlock, i);
+		free(emptyBlock);
+	}
+	return 0;
+}
+
 
 uint32_t balloc(){
 		uint32_t i;
@@ -14,20 +28,21 @@ uint32_t balloc(){
 			d_bitmap = malloc(SBFS_BLOCK_SIZE);
 			read_block(d_bitmap, block_nmbr);
 			for(i = 0; i < SBFS_BLOCK_SIZE*8; i++){
-				int free_block = getBit(d_bitmap, i);
+				int free_block = getBit((int *)d_bitmap, i);
 				if(free_block == 0){
 					log_info("block number i in balloc: %d", i);
 					uint32_t free_block_number = i*block_nmbr;
-					setBit(d_bitmap, i);
+					setBit((int *) d_bitmap, i);
 					write_block(d_bitmap, block_nmbr);
 					free(d_bitmap);
 					return free_block_number;
 				}
+			
 			}
+			free(d_bitmap);
 			block_nmbr++;
 		}
 
-		free(d_bitmap);
 		return 0; //nothing found, 
 }
 

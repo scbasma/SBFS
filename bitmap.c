@@ -9,7 +9,7 @@ void setBit(int *bitmap, int pos){
 	unsigned int bitPos = pos%32;
 
 	unsigned int shifter = 1;
-	int i;
+	// int i;
 	// for(i = 0; i < pos; i++){
 	// 	*bitmap++;
 	// }

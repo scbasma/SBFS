@@ -13,8 +13,10 @@
 #include "sb_mkfs.h"
 #include "dir.h"
 #include "dbg.h"
+#include "spblk.h"
+#include "sbfs.h"
 
-
+sbfs_sp_blk *sp_blk;
 
 
 int sbfs_mknod(const char *pathname, mode_t mode, dev_t dev){
@@ -29,7 +31,7 @@ int sbfs_mkdir(const char *path, mode_t mode){
 };
 
 int sbfs_rmdir(const char *path){
-
+	return 0;
 };
 
 int sbfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi){
@@ -62,6 +64,8 @@ int sbfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offs
 				log_info("Memory error: buffer full");
 				free(entry);
 				return -ENOMEM;
+			}else {
+				log_info("SBFSSONDREentry with inode_number: %d added to filler in readdir", (int) entry->inode_number);
 			}
 		}
 	}
@@ -150,7 +154,8 @@ int sbfs_access(const char *path, int mask){
 	log_info("access called with path: %s and mask: %d", path, mask);
 	log_info("X_OK %d", X_OK);
 	sbfs_core_inode *inode = namei(path);
-
+	log_info("inode nmbr: %d", inode->i_nmbr);
+	log_info("inode permissions: %d", inode->d_inode.perm);
 	if(inode == NULL){
 		return -ENOENT;
 	}
@@ -177,16 +182,18 @@ int sbfs_write(const char *pathname, const char *buf, size_t size, off_t offset,
 	return count;
 };
 
-void sbfs_init(struct fuse_conn_info *conn){
-	//return (FILE*)fuse_get_context()->private_data;
-}
 
 int sbfs_getattr(const char *path, struct stat *stbuf){
 	log_info("getattr called!!");
 	int res = 0;
 	sbfs_core_inode *inode = namei(path);
 	memset(stbuf, 0, sizeof(struct stat));
-	if(inode == NULL || (inode->i_nmbr == 0)){
+	if(inode == NULL){
+		return -ENOENT;
+	}
+
+	if(inode->i_nmbr == 0){
+		free(inode);
 		return -ENOENT;
 	}
 	log_info("inode nmbr: %d", inode->i_nmbr);
@@ -204,11 +211,43 @@ int sbfs_getattr(const char *path, struct stat *stbuf){
 	stbuf->st_atime = inode->d_inode.a_time;
 	stbuf->st_mtime = inode->d_inode.m_time;
 	stbuf->st_ctime = inode->d_inode.c_time;
-
+	free(inode);
 	return res;
 }
 
 
+int sbfs_release(const char *path, struct fuse_file_info *fi){
+	sbfs_core_inode *c_inode = namei(path);
+
+	if(c_inode == NULL){
+		return -ENOENT;
+	}
+
+	iput(c_inode);
+	// free(c_inode);
+
+	return 0;
+}
+
+void *sbfs_init(struct fuse_conn_info *conn){
+	return (FILE*)fuse_get_context()->private_data;
+}
+
+
+int load_disk(char* disk_path)
+{
+    if ((disk = open(disk_path, O_RDWR)) == -1) {
+        fprintf(stderr, "Disk loaded error!\n");
+        return -1;
+    }
+
+    fprintf(stderr, "Disk loaded!\n");
+    return 0;
+}
+
+void sbfs_destroy(void *user_data){
+	close(disk);
+}
 
 
 
@@ -225,18 +264,49 @@ struct fuse_operations sbfs_operations = {
 	.read = sbfs_read,
 	.write = sbfs_write,
 	.utimens = sbfs_utimens,
-	.access = sbfs_access
+	.access = sbfs_access,
+	.release = sbfs_release,
+	.chmod = sbfs_chmod,
+	.chown = sbfs_chown,
+	.init = sbfs_init,
+	.destroy = sbfs_destroy
 	// .init = sbfs_init
 };
 
 int main(int argc, char *argv[]){
 
-	if (argc < 3){
-		printf("needs 2 args: path of device and path of mount point");
+	if ((argc < 3)||(argv[argc-2][0] == '-') || (argv[argc-1][0] == '-')) {
+	    fprintf(stderr, "Last two argument must be path of device and path of mount point\n");
+	    return -1;
 	}
 
+
+	char* disk_path = realpath(argv[argc-2], NULL);
+	log_info("disk_path: %s",disk_path);
+	if (!disk_path) {
+	    fprintf(stderr, "Disk path is not correct!\n");
+	    return -1;
+	}
+	fprintf(stderr, "Disk path: %s\n", disk_path);
+	log_info("argv[argc-2]: %s", argv[argc-2]);
+	log_info("argv[argc-1]: %s", argv[argc-1]);
+	argv[argc-2] = argv[argc-1];
+	argv[argc-1] = NULL;
+	argc--;
+	
+	log_info("argv[argc-2] after: %s", argv[argc-2]);
+	log_info("argc: %d", argc);
+
+	if (load_disk(disk_path) == -1){
+			fprintf(stderr, "load disk failed");
+	    return -1;
+	 }
+
+	 get_super();
+	 log_info("magic_number: %d", sp_blk->magic_number);
+
 	int stat;
-	mkfs();
+
 	umask(0);
 	stat = fuse_main(argc, argv, &sbfs_operations, NULL);
 

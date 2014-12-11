@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 typedef struct {
+	uint64_t size;
 	uint16_t version;
 	uint32_t magic_number;
 	uint32_t block_count;
@@ -19,7 +20,7 @@ typedef struct {
 } sbfs_sp_blk;
 
 
-int get_free_dblock();
+int get_super();
 
 #endif
 

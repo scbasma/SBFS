@@ -2,6 +2,7 @@
 #include "sbfs.h"
 #include "dir.h"
 #include "dbg.h"
+#include "sys.h"
 
 
 //directory is just a file consisting of directory entries
@@ -45,7 +46,14 @@ struct dir_entry *get_dir(sbfs_core_inode *c_inode, uint32_t offset){
 	}
 
 	struct dir_entry *entry = malloc(sizeof(struct dir_entry));
-	if(sys_read(c_inode->i_nmbr, entry, sizeof(struct dir_entry), offset) > 0){
+
+	struct dir_entry g_entry;
+	if(sys_read(c_inode->i_nmbr, (char *) &g_entry, sizeof(struct dir_entry), offset) > 0){
+ 				memcpy(entry, &g_entry, sizeof(struct dir_entry));
+ 					
+				//entry->inode_number = g_entry.inode_number;
+				strcpy(entry->name, g_entry.name);
+
  				return entry;
  	}else{
 
@@ -55,6 +63,22 @@ struct dir_entry *get_dir(sbfs_core_inode *c_inode, uint32_t offset){
  	return NULL;
 
 
+
+}
+
+int add_dir(uint32_t i_nmbr, const struct dir_entry *entry){
+	log_info("INUMBER RECEIVED IN add_dir: %d", (int) i_nmbr);
+	sbfs_core_inode *inode = iget(i_nmbr);
+	struct dir_entry d_entry;
+
+
+	strcpy(d_entry.name, entry->name);
+	d_entry.inode_number = entry->inode_number;
+	log_info("INUMBER RECEIVED IN add_dir added to d_entry: %d", (int) d_entry.inode_number);
+	log_info("inode with entry has size: %d", (int) inode->d_inode.size);
+	int ret = sys_write(inode->i_nmbr, (char * ) &d_entry, sizeof(d_entry), inode->d_inode.size);
+
+	return ret;
 
 }
 

@@ -9,5 +9,6 @@
 
 uint32_t balloc();
 void bfree(uint32_t block);
+int init_dt_blks();
 
 #endif

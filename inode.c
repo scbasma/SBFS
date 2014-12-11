@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h> 
 #include <libgen.h>
+#include <inttypes.h>
 #include "inode.h"
 #include "sbfs.h"
 #include "dbg.h"
@@ -34,13 +35,6 @@
 sbfs_core_inode c_inode_list[100];
 sbfs_core_inode *c_inode_free;
 
-int write_root_inode(){
-	struct sbfs_inode *root_inode = malloc(SBFS_BLOCK_SIZE);
-	return 0;
-
-error:
-	return -1;
-}
 
 void init_incore_list(){
 	c_inode_free = malloc(100*sizeof(sbfs_core_inode));
@@ -91,7 +85,8 @@ sbfs_core_inode *iget(uint32_t i_nmbr){
 	memcpy(d_inode, inode_block + inode_in_block_nmbr, sizeof(sbfs_disk_inode));
 	free(inode_block);
 	sbfs_core_inode *c_inode = malloc(sizeof(sbfs_core_inode));
-	memcpy(&(c_inode->d_inode), d_inode, sizeof(sbfs_disk_inode) );
+	memcpy(&(c_inode->d_inode), d_inode, sizeof(sbfs_disk_inode));
+	log_info("INODE IN IGET size: %"PRIu64"", c_inode->d_inode.size);
 	free(d_inode);
 	c_inode->i_nmbr = i_nmbr;
 	c_inode->status = 0;
@@ -120,10 +115,16 @@ void iput(sbfs_core_inode *c_inode){
 	//release lock;
 }
 
-int bmap(sbfs_core_inode *c_inode, off_t offset, uint8_t *file_offset){
+int bmap(sbfs_core_inode *c_inode, off_t offset, uint32_t *file_offset){
+
+	//TODO: divide this hell of a function into several new ones
+
 	int blk_nmbr = 0;
 	int block_pos_in_file = offset/SBFS_BLOCK_SIZE;
-	int pos_in_block = offset%SBFS_BLOCK_SIZE;
+	log_info("BLOCK POS IN FILE IN BMAP: %d", block_pos_in_file);
+	uint32_t pos_in_block = offset%SBFS_BLOCK_SIZE;
+	log_info("POS IN BLOCK AT BMAP: %d", pos_in_block);
+
 	if(file_offset){
 		*file_offset = pos_in_block;
 	}
@@ -133,27 +134,31 @@ int bmap(sbfs_core_inode *c_inode, off_t offset, uint8_t *file_offset){
 		if (blk_nmbr == 0){
 			blk_nmbr = balloc();
 			if(blk_nmbr == 0) return -1;
+			log_info("INSIDE IRECT BLOCK IF BMAP WITH blk_nmbr: %d", blk_nmbr);
 			c_inode->d_inode.dt_blocks[block_pos_in_file] = blk_nmbr;
+			iput(c_inode);
+			return blk_nmbr;
+		}
+		else {
+			return blk_nmbr;
 		}
 	}
 	else if(block_pos_in_file < (12+1024)){ //first indirect block, with 1024 block numbers together with the first 12 direct
 		uint32_t indirect_block_nmbr = c_inode->d_inode.dt_blocks[12];
-
+		log_info("INSIDE INDIRECT BLOCK IF BMAP WITH blk_nmbr: %d", blk_nmbr);
+		log_info("INSIDE INDIRECT BLOCK IF BMAP WITH indirect blk_nmbr: %d",indirect_block_nmbr);
 		if(indirect_block_nmbr == 0){
 			indirect_block_nmbr = balloc();
 			c_inode->d_inode.dt_blocks[12] = indirect_block_nmbr;
 			uint32_t blk_nmbr = balloc();
+			log_info("bmap blk_nmbr after balloc: %d", blk_nmbr);
 
-			uint32_t *buf = malloc(SBFS_BLOCK_SIZE);
+			uint32_t *buf = (uint32_t *) calloc(1, SBFS_BLOCK_SIZE);
 			//initialize every value in new indirect block to zero
-			int i;
-			for(i = 0; i < SBFS_BLOCK_SIZE/sizeof(uint32_t); i++){
-				*(buf++) = 0;
-			};
 			*(buf+(block_pos_in_file-12)) = blk_nmbr;
 			write_block(buf, indirect_block_nmbr);
 			free(buf);
-
+			iput(c_inode);
 			return blk_nmbr;
 
 		}
@@ -161,8 +166,8 @@ int bmap(sbfs_core_inode *c_inode, off_t offset, uint8_t *file_offset){
 		uint32_t *buf = malloc(SBFS_BLOCK_SIZE);
 		read_block(buf, indirect_block_nmbr);
 		uint32_t blk_nmbr = *(buf+(block_pos_in_file-12));
-
-		if(blk_nmbr == NULL || blk_nmbr == 0){
+		log_info("INSIDE INDIRECT BLOCK IF BMAP WITH block in indirect block: %d",blk_nmbr);
+		if(blk_nmbr == 0){
 			blk_nmbr = balloc();
 			*(buf+(block_pos_in_file-12)) = blk_nmbr;
 			write_block(buf, indirect_block_nmbr);
@@ -173,48 +178,52 @@ int bmap(sbfs_core_inode *c_inode, off_t offset, uint8_t *file_offset){
 
 	}
 	else if(block_pos_in_file < (12+1024*1024)){ //double indirect block
+		log_info("INSIDE DOUBLE INDIRECT BLOCK IF BMAP WITH blk_nmbr: %d", blk_nmbr);
 		uint32_t first_block = block_pos_in_file-(12+1024);
 		uint32_t sec_block = first_block/(1024*1024);
 		uint32_t third_block = first_block - sec_block*1024;
 
 		uint32_t double_indirect_block_nmbr = c_inode->d_inode.dt_blocks[13];
-		uint32_t *buf = malloc(SBFS_BLOCK_SIZE);
+		uint32_t *buf = (uint32_t *) calloc(1, SBFS_BLOCK_SIZE);
 		
 		if(double_indirect_block_nmbr == 0){
 
 			double_indirect_block_nmbr = balloc();
 			c_inode->d_inode.dt_blocks[13] = double_indirect_block_nmbr;
-			//initialize values in new double indirect block to 0
-			int i;
-			for(i = 0; i < SBFS_BLOCK_SIZE/sizeof(uint32_t); i++){
-				*(buf++) = 0;
-			};
+
+
 			uint32_t indirect_block_nmbr = balloc();
 			*(buf+sec_block) = indirect_block_nmbr;
 			write_block(buf, double_indirect_block_nmbr);
-			read_block(buf, indirect_block_nmbr);
-			//initialize values in new indirect block to 0
-			for(i = 0; i < SBFS_BLOCK_SIZE/sizeof(uint32_t); i++){
-				*(buf++) = 0;
-			};
+
+			uint32_t *buf2 = (uint32_t *) calloc(1, SBFS_BLOCK_SIZE);
+
 			uint32_t blk_nmbr = balloc();
-			*(buf+third_block) = blk_nmbr;
-			free(buf);
+			*(buf2+third_block) = blk_nmbr;
+			write_block(buf2, indirect_block_nmbr);
+			free(buf2);
+			iput(c_inode);
 			return blk_nmbr;
 
 		}
 		read_block(buf, double_indirect_block_nmbr);
 		uint32_t indirect_block_nmbr = *(buf+sec_block);
-		if(indirect_block_nmbr == NULL || indirect_block_nmbr == 0){
+		if(indirect_block_nmbr == 0){
 			indirect_block_nmbr = balloc();
 			*(buf+sec_block) = indirect_block_nmbr;
+			write_block(buf, double_indirect_block_nmbr);
+			
+			uint32_t *buf = (uint32_t *) calloc(1, SBFS_BLOCK_SIZE);
+			write_block(buf, indirect_block_nmbr);
+			free(buf);
 		}
 		read_block(buf, indirect_block_nmbr);
 		uint32_t blk_nmbr = *(buf+third_block);
 
-		if(blk_nmbr == NULL || blk_nmbr == 0){
+		if(blk_nmbr == 0){
 			blk_nmbr = balloc();
 			*(buf+third_block) = blk_nmbr;
+			write_block(buf, indirect_block_nmbr);
 		}
 		free(buf);
 		return blk_nmbr;
@@ -232,7 +241,7 @@ int write_inode(sbfs_core_inode *inode){
 	int blk_nmbr = (FIRST_INODE_BLOCK_NMBR) + ((inode->i_nmbr) / INODE_NMBR_PER_BLOCK);
 	int inode_in_block_nmbr = (inode->i_nmbr) % INODE_NMBR_PER_BLOCK;
 	
-
+	log_info("writing inode to blk_nmbr: %d", blk_nmbr);
 	read_block(buf, blk_nmbr);
 	memcpy(buf+inode_in_block_nmbr, &(inode->d_inode), sizeof(sbfs_disk_inode));
 	// log_info("BLOCK GIVEN TO ROOT BEFORE WRITE: %d", inode->d_inode.dt_blocks[0]);
@@ -246,12 +255,13 @@ int write_inode(sbfs_core_inode *inode){
 
 
 sbfs_core_inode *namei(const char *one_path){
-	char * path_name = malloc(sizeof(*one_path)); 
+	char * path_name = malloc(strlen(one_path) + 1); 
 	strcpy(path_name, one_path);
  	sbfs_core_inode *working_inode = iget(2);
  	
-; 	if(strcmp(path_name, "/") == 0){
- 		return working_inode;
+ 		if(strcmp(path_name, "/") == 0){
+ 			free(path_name);
+ 			return working_inode;
  	}	
  	// log_info("number of working inode: %d", working_inode->i_nmbr);
  	// log_info("status of working inode: %d", working_inode->status);
@@ -262,15 +272,29 @@ sbfs_core_inode *namei(const char *one_path){
  	filename = basename(filenamec);
  	char *dir_name;
  	dir_name = strtok(path, "/");
- 	int inodeNumber = working_inode->i_nmbr;
  	int increment = 0;
+
  	while(dir_name != NULL){
  		
  		struct dir_entry *entry = get_dir(working_inode, increment*(sizeof(struct dir_entry))); 
 		
 		if(entry == NULL){
+			free(filenamec);
+			free(path_name);
+ 			free(path);
+ 			free(entry);
 			return NULL;
 		}
+		log_info("Dir name in namei: %s", dir_name);
+		log_info("Name we are looking for: %s", filename);
+		// log_info("ENTRY inode_number IN NAMEI: %d", entry->inode_number);
+		// log_info("ENTRY NAME IN NAMEI: %s", entry->name);
+		if(entry->inode_number == 0){
+			increment++;
+			free(entry);
+			continue;
+		}
+
 		if(entry != NULL && strcmp(entry->name, filename) == 0){
 			working_inode = iget(entry->inode_number);
 			//return working_inode;
@@ -279,15 +303,22 @@ sbfs_core_inode *namei(const char *one_path){
 		// log_info("BEFOR WHILE ENTRY PTR NAME");	
 		// log_info("Entry ptr name: %s", entry_ptr->name);
 		if(strcmp(entry->name,dir_name) == 0){
+			log_info("entry name and dirname matches: %s and %s", entry->name, dir_name);
+			log_info("getting inode: %d", entry->inode_number);
 			working_inode = iget(entry->inode_number);
 			dir_name = strtok(NULL, "/");
 			increment = 0;
+			free(entry);
 			continue;
 		}
 
  		increment++;
- 		continue;
  		free(entry);
+ 		continue;
  	}
+	free(path_name);
+	free(path);
+	free(filenamec);
+ 	//return working_inode;
  	return working_inode;
 };
