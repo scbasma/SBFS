@@ -105,40 +105,41 @@ size_t sys_read(uint32_t fd, char *buf, size_t count, off_t offset){
 	// }
 
 	// return read_count;
-	sbfs_core_inode* pinode = iget(fd);
-
-    if (!pinode)
+	sbfs_core_inode* inode = iget(fd);
+  uint32_t file_offset;
+	uint32_t blk_nmr;
+    if (!inode)
         return -1;
 
     int read_count = 0;
 
     while (read_count < count) {
-        uint32_t in_offset;
-        uint32_t blk_id;
-        if (offset < pinode->d_inode.size) {
-            blk_id = bmap(pinode, offset, &in_offset);
 
-            if (blk_id <= 0)
+        if (offset < inode->d_inode.size) {
+            blk_nmr = bmap(inode, offset, &file_offset);
+
+            if (blk_nmr <= 0)
                 break;
         } else
             break;
 
-        char buf0[SBFS_BLOCK_SIZE];
-       	read_block(buf0, blk_id);
+        char * block_buf=calloc(1, SBFS_BLOCK_SIZE);
+       	read_block(block_buf, blk_nmr);
 
         int i;
-        for (i = in_offset; i < SBFS_BLOCK_SIZE; i++)
+        for (i = file_offset; i < SBFS_BLOCK_SIZE; i++)
         {
             if (read_count >= count)
                 break;
 
-            buf[read_count] = buf0[i];
+            buf[read_count] = block_buf[i];
 
             read_count++;
         }
-        offset += i - in_offset;
+        offset += i - file_offset;
+        free(block_buf);
     }
-    free(pinode);
+    free(inode);
     return count;
 
 }

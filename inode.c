@@ -105,6 +105,7 @@ sbfs_core_inode *iget(uint32_t i_nmbr){
 	c_inode->ref_count = 1;
 	
 	return c_inode;
+	
 }
 
 void iput(sbfs_core_inode *c_inode){
