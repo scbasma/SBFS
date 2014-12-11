@@ -48,19 +48,16 @@ void init_incore_list(){
 void ifree(uint32_t inode_number){
 	sp_blk->number_of_inodes++;
 
-	int free_inode = sp_blk->next_free_inode;
-	sp_blk->next_free_inode += 1;
-	sp_blk->number_of_inodes -=1;
+	//sp_blk->next_free_inode += 1;
+	sp_blk->number_of_inodes +=1;
 	//int block_nmbr = free_inode / NUMBER_OF_INODE_BITMAP_BLOCKS;
-	int block_nmbr = free_inode / (4096*8);
+	int block_nmbr = inode_number / (4096*8);
 	
 	int *bitmap_block = (int*) calloc(1024, sizeof(int));
 	read_block(bitmap_block, FIRST_BITMAP_BLOCK_POS+block_nmbr);
-	int bitPos = free_inode - (4096*8*block_nmbr);
-	check_mem(bitmap_block);
+	int bitPos = inode_number - (4096*8*block_nmbr);
 	clearBit(bitmap_block, bitPos);
 	write_block(bitmap_block, FIRST_BITMAP_BLOCK_POS+block_nmbr);
-	c_inode = iget(free_inode);
 	free(bitmap_block);
 
 }
@@ -112,7 +109,7 @@ sbfs_core_inode *iget(uint32_t i_nmbr){
 
 void iput(sbfs_core_inode *c_inode){
 	
-	c_inode->ref_count--;
+	//c_inode->ref_count--;
 	if(c_inode->d_inode.link_count == 0){
 		int i;
 		for(i = 0; i < 14; i++){
@@ -164,24 +161,15 @@ void iput(sbfs_core_inode *c_inode){
 						buf[k] = 0;
 					}
 					write_block(buf, c_inode->d_inode.dt_blocks[i]);
-					bree(c_inode->d_inode.dt_blocks[i])
+					bfree(c_inode->d_inode.dt_blocks[i]);
 				}	
 			}
 		}
 
 		ifree(c_inode->i_nmbr);
-
-
-
+		c_inode->d_inode.size = 0;	
 	}
-	if(c_inode->status){ //if changed write to disk, do it anyways right now
-	
-	}
-
-		write_inode(c_inode);		
-
-		
-	}
+	write_inode(c_inode);	
 }
 
 int bmap(sbfs_core_inode *c_inode, off_t offset, uint32_t *file_offset){
@@ -391,4 +379,4 @@ sbfs_core_inode *namei(const char *one_path){
 	free(filenamec);
  	//return working_inode;
  	return working_inode;
-};
+}

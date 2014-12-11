@@ -205,7 +205,7 @@ uint32_t sys_mknod(const char *path, uint8_t file_t, mode_t mode){
 	new_inode->d_inode.m_time = time(NULL);
 	new_inode->d_inode.c_time = time(NULL);
 	new_inode->d_inode.a_time = time(NULL);
-	new_inode->d_inode.link_count = 1;
+	new_inode->d_inode.link_count = 2;
 	new_inode->d_inode.user_id = getuid();
 	new_inode->d_inode.grp_id = getgid();
 	iput(new_inode);

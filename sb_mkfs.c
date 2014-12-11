@@ -184,7 +184,7 @@ void make_root(){
 	root_inode->d_inode.grp_id=getgid();
 	root_inode->d_inode.a_time = time(NULL);
 	root_inode->d_inode.m_time = time(NULL);
-	root_inode->d_inode.link_count +=1;
+	root_inode->d_inode.link_count =2;
 	root_inode->d_inode.res_blocks_nmbr = 1;
 	root_inode->d_inode.flags = 0;
 	root_inode->d_inode.dt_blocks[0] = balloc();
