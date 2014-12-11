@@ -48,6 +48,21 @@ void init_incore_list(){
 void ifree(uint32_t inode_number){
 	sp_blk->number_of_inodes++;
 
+	int free_inode = sp_blk->next_free_inode;
+	sp_blk->next_free_inode += 1;
+	sp_blk->number_of_inodes -=1;
+	//int block_nmbr = free_inode / NUMBER_OF_INODE_BITMAP_BLOCKS;
+	int block_nmbr = free_inode / (4096*8);
+	
+	int *bitmap_block = (int*) calloc(1024, sizeof(int));
+	read_block(bitmap_block, FIRST_BITMAP_BLOCK_POS+block_nmbr);
+	int bitPos = free_inode - (4096*8*block_nmbr);
+	check_mem(bitmap_block);
+	clearBit(bitmap_block, bitPos);
+	write_block(bitmap_block, FIRST_BITMAP_BLOCK_POS+block_nmbr);
+	c_inode = iget(free_inode);
+	free(bitmap_block);
+
 }
 
 sbfs_core_inode *ialloc(){
@@ -96,23 +111,77 @@ sbfs_core_inode *iget(uint32_t i_nmbr){
 }
 
 void iput(sbfs_core_inode *c_inode){
-	//lock here
+	
 	c_inode->ref_count--;
-	if(c_inode->ref_count == 0){
+	if(c_inode->d_inode.link_count == 0){
+		int i;
+		for(i = 0; i < 14; i++){
 
-		if(c_inode->d_inode.link_count == 0){
-			//free inode, blocks 
+			//direct blocks
+			if(i < 12){
+				if( c_inode->d_inode.dt_blocks[i] > 0){
+					bfree(c_inode->d_inode.dt_blocks[i]);
+				}
+			}
+			//indirect block
+			if(i == 12){
+				if(c_inode->d_inode.dt_blocks[i] > 0){
+					uint32_t buf[SBFS_BLOCK_SIZE/sizeof(uint32_t)];
+					read_block(buf, c_inode->d_inode.dt_blocks[i]);
+					int j;
+					for(j=0; j < (SBFS_BLOCK_SIZE/sizeof(uint32_t)); j++){
+						if( buf[j] > 0){
+							bfree(buf[j]);		
+						}
+						buf[j] = 0;
+					}
+					write_block(buf, c_inode->d_inode.dt_blocks[i]);
+					bfree(c_inode->d_inode.dt_blocks[i]);
+				}
+			}
+
+			if(i == 13){
+				if(c_inode->d_inode.dt_blocks[i] > 0){
+					uint32_t buf[SBFS_BLOCK_SIZE/sizeof(uint32_t)];
+					read_block(buf, c_inode->d_inode.dt_blocks[i]);
+					int k;
+					for(k = 0; k < (SBFS_BLOCK_SIZE/sizeof(uint32_t)); k++){
+
+						if(buf[k] > 0){
+							uint32_t buf2[SBFS_BLOCK_SIZE/sizeof(uint32_t)];
+							read_block(buf2, buf[k]);
+
+							int x;
+							for(x = 0; x < (SBFS_BLOCK_SIZE/sizeof(uint32_t)); x++ ){
+								if(buf[x] > 0){
+									bfree(buf[x]);
+								}
+								buf[x] = 0;
+							}
+							write_block(buf2, buf[k]);
+							bfree(buf[k]);
+						}
+						buf[k] = 0;
+					}
+					write_block(buf, c_inode->d_inode.dt_blocks[i]);
+					bree(c_inode->d_inode.dt_blocks[i])
+				}	
+			}
 		}
-		if(c_inode->status){ //if changed write to disk, do it anyways right now
-		
-		}
+
+		ifree(c_inode->i_nmbr);
+
+
+
+	}
+	if(c_inode->status){ //if changed write to disk, do it anyways right now
+	
+	}
 
 		write_inode(c_inode);		
 
 		
 	}
-
-	//release lock;
 }
 
 int bmap(sbfs_core_inode *c_inode, off_t offset, uint32_t *file_offset){
@@ -218,6 +287,7 @@ int bmap(sbfs_core_inode *c_inode, off_t offset, uint32_t *file_offset){
 			free(buf);
 		}
 		read_block(buf, indirect_block_nmbr);
+		log_info("third block in bmap: %d", third_block);
 		uint32_t blk_nmbr = *(buf+third_block);
 
 		if(blk_nmbr == 0){
